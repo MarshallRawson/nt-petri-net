@@ -1,0 +1,12 @@
+[package]
+name = "mnet"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+mnet_lib = { path = "./mnet_lib" }
+mnet_macro = { path = "./mnet_macro" }
+rand = "0.8.5"
