@@ -1,17 +1,35 @@
 use std::any::{Any, TypeId, type_name};
 use std::collections::{HashMap, HashSet};
 use std::vec::Vec;
-use std::sync::Arc;
+use sha1::{Sha1, Digest};
+
+pub struct Printer {
+    prefix: String,
+    color: (u8, u8, u8),
+}
+impl Printer {
+    fn make(prefix: String) -> Self {
+        let normalize = |x: f32| (((x / 255.0) * 155.0) + 100.0) as u8;
+        let mut hasher = Sha1::new();
+        hasher.update(&prefix);
+        let digest = hasher.finalize();
+        let color = (
+            normalize(digest[0].into()),
+            normalize(digest[2].into()),
+            normalize(digest[4].into()),
+        );
+        Self { prefix, color }
+    }
+    pub fn println(&self, s: &str) {
+        println!("\x1b[38;2;{};{};{}m[{}]\x1b[0m: {}", self.color.0, self.color.1, self.color.2, self.prefix, s);
+    }
+}
 
 pub trait Place {
     fn in_type(&self) -> TypeId;
     fn out_types(&self) -> HashSet<TypeId>;
     fn out_types_names(&self) -> HashSet<String>;
-    fn run(
-        &mut self,
-        x: Box<dyn Any>,
-        out_map: &mut HashMap::<TypeId, Arc<Edge>>,
-    );
+    fn run(&mut self, p: &Printer, x: Box<dyn Any>, out_map: &mut HashMap::<TypeId, Edge>);
 }
 
 #[derive(Debug)]
@@ -36,7 +54,7 @@ impl Edge {
 
 pub struct GraphMaker {
     places: HashMap<String, Box<dyn Place>>,
-    edges: HashMap<String, Arc<Edge>>,
+    edges: HashMap<String, Edge>,
     places_to_edges: HashMap<String, HashSet<String>>,
     edges_to_places: HashMap<String, HashSet<String>>,
 
@@ -56,12 +74,12 @@ impl GraphMaker {
         self
     }
     pub fn add_edge<T: 'static>(&mut self, name: String) -> &mut Self {
-        self.edges.insert(name.clone(), Arc::new(Edge {
+        self.edges.insert(name.clone(), Edge {
                 _name: name.clone(),
                 type_name: type_name::<T>().into(),
                 type_id: TypeId::of::<T>(),
                 vec: vec![],
-        }));
+        });
         self.edges_to_places.insert(name, HashSet::new());
         self
     }
@@ -69,7 +87,7 @@ impl GraphMaker {
         match self.edges.get_mut(&edge) {
             Some(e) => {
                 for t in start_tokens.drain(..) {
-                    Arc::get_mut(e).unwrap().push(Box::new(t));
+                    e.push(Box::new(t));
                 }
             }
             None => {
@@ -102,57 +120,71 @@ impl GraphMaker {
         };
         self
     }
-    pub fn to_runner(&mut self) -> GraphRunner {
+}
+
+pub struct GraphRunner {
+    places: HashMap<String, (Printer, HashSet<String>, Box<dyn Place>, HashMap<TypeId, String>)>,
+    edges: HashMap<String, Edge>,
+}
+impl GraphRunner {
+    pub fn from_maker(mut maker: GraphMaker) -> Self {
         let mut places = HashMap::new();
-        for (place_name, p) in self.places.drain() {
+        for (place_name, p) in maker.places.drain() {
             let in_edges = {
-                let mut in_edges = vec![];
-                for (e, places) in &self.edges_to_places {
+                let mut in_edges = HashSet::new();
+                for (e, places) in &maker.edges_to_places {
                     if places.contains(&place_name) {
-                        in_edges.push(self.edges[e].clone());
-                        assert_eq!(p.in_type(), self.edges[e].type_id);
+                        in_edges.insert(e.clone());
+                        assert_eq!(p.in_type(), maker.edges[e].type_id);
                     }
                 }
+                assert!(in_edges.len() > 0);
                 in_edges
             };
             let out_edges = {
-                let mut out_edges : HashMap<TypeId, Arc<Edge>> = HashMap::new();
-                for edge_name in &self.places_to_edges[&place_name] {
-                    let edge = self.edges[edge_name].clone();
-                    assert!(!out_edges.contains_key(&edge.type_id));
-                    out_edges.insert(edge.type_id, edge);
+                let mut out_edges : HashMap<TypeId, String> = HashMap::new();
+                for edge_name in &maker.places_to_edges[&place_name] {
+                    //let edge = self.edges[edge_name].clone();
+                    assert!(!out_edges.contains_key(&maker.edges[edge_name].type_id));
+                    out_edges.insert(maker.edges[edge_name].type_id, edge_name.clone());
                 }
                 assert_eq!(out_edges.clone().into_keys().collect::<HashSet<TypeId>>(), p.out_types(),
                     "Place: {:?} has out edges: {:?}, but {:?} are not connected!", place_name,
                     p.out_types_names(),
-                    p.out_types_names().difference(&out_edges.iter().map(|(_, e)| e.type_name.clone()).collect::<HashSet<String>>())
+                    p.out_types_names().difference(&maker.edges.iter().map(
+                        |(_, e)| e.type_name.clone()
+                    ).collect::<HashSet<String>>())
                 );
                 out_edges
             };
-            println!("{:?}, ({:?}, ..., {:?})", place_name, in_edges, out_edges);
-            places.insert(place_name, (in_edges, p, out_edges));
+            places.insert(place_name.clone(), (Printer::make(place_name), in_edges, p, out_edges));
         }
-        GraphRunner { places }
+        Self { places: places, edges: maker.edges }
     }
-}
-
-pub struct GraphRunner {
-    places: HashMap<String, (Vec<Arc<Edge>>, Box<dyn Place>, HashMap<TypeId, Arc<Edge>>)>,
-}
-impl GraphRunner {
-    pub fn run(&mut self) {
+    pub fn run(mut self: Self) -> HashMap<String, Edge> {
         let mut continue_executing = true;
         while continue_executing {
             continue_executing = false;
-            for (_place_name, (in_edges, place, out_edges)) in self.places.iter_mut() {
-                for e in in_edges {
-                    if e.len() > 0 {
-                        println!("running {:?} from {:?}", _place_name, e._name);
-                        place.run(Arc::get_mut(e).unwrap().pop(), out_edges);
+            for (_place_name, (printer, in_edges, place, out_edges_names)) in self.places.iter_mut() {
+                for e in in_edges.iter() {
+                    if self.edges[e].len() > 0 {
+                        let mut out_edges = {
+                            let mut out_edges = HashMap::new();
+                            for (t, e_name) in out_edges_names.into_iter() {
+                                out_edges.insert(*t, self.edges.remove(e_name).unwrap());
+                            }
+                            out_edges
+                        };
+                        place.run(printer, self.edges.get_mut(e).unwrap().pop(), &mut out_edges);
+                        for (t, e_name) in out_edges_names.into_iter() {
+                            self.edges.insert(e_name.clone(), out_edges.remove(&t).unwrap());
+                        }
+                        assert_eq!(out_edges.len(), 0);
                         continue_executing = true;
                     }
                 }
             }
         }
+        self.edges
     }
 }
