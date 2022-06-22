@@ -10,3 +10,6 @@ edition = "2021"
 mnet_lib = { path = "./mnet_lib" }
 mnet_macro = { path = "./mnet_macro" }
 rand = "0.8.5"
+nokhwa = { version = "0.9.4", features = ["input-v4l"] }
+image = "0.24.2"
+show-image = "0.12.3"

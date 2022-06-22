@@ -68,54 +68,54 @@ impl GraphMaker {
             edges_to_places: HashMap::new(),
         }
     }
-    pub fn add_place(&mut self, name: String, p: Box<dyn Place>) -> &mut Self {
-        self.places.insert(name.clone(), p);
-        self.places_to_edges.insert(name, HashSet::new());
+    pub fn add_place(&mut self, name: &str, p: Box<dyn Place>) -> &mut Self {
+        self.places.insert(name.into(), p);
+        self.places_to_edges.insert(name.into(), HashSet::new());
         self
     }
-    pub fn add_edge<T: 'static>(&mut self, name: String) -> &mut Self {
-        self.edges.insert(name.clone(), Edge {
-                _name: name.clone(),
+    pub fn add_edge<T: 'static>(&mut self, name: &str) -> &mut Self {
+        self.edges.insert(name.into(), Edge {
+                _name: name.into(),
                 type_name: type_name::<T>().into(),
                 type_id: TypeId::of::<T>(),
                 vec: vec![],
         });
-        self.edges_to_places.insert(name, HashSet::new());
+        self.edges_to_places.insert(name.into(), HashSet::new());
         self
     }
-    pub fn set_start_tokens<T: 'static>(&mut self, edge: String, mut start_tokens: Vec<T>) -> &mut Self {
-        match self.edges.get_mut(&edge) {
+    pub fn set_start_tokens<T: 'static>(&mut self, edge: &str, mut start_tokens: Vec<T>) -> &mut Self {
+        match self.edges.get_mut(&edge.to_string()) {
             Some(e) => {
                 for t in start_tokens.drain(..) {
                     e.push(Box::new(t));
                 }
             }
             None => {
-                self.add_edge::<T>(edge.clone()).set_start_tokens::<T>(edge, start_tokens);
+                self.add_edge::<T>(edge.into()).set_start_tokens::<T>(edge, start_tokens);
             }
         }
         self
     }
-    pub fn place_to_edge(&mut self, place: String, edge: String) -> &mut Self {
-        match self.places_to_edges.get_mut(&place) {
+    pub fn place_to_edge(&mut self, place: &str, edge: &str) -> &mut Self {
+        match self.places_to_edges.get_mut(&place.to_string()) {
             Some(s) => {
-                s.insert(edge);
+                s.insert(edge.into());
             },
             None => {
-                self.places_to_edges.insert(place.clone(), HashSet::new());
-                self.places_to_edges.get_mut(&place).unwrap().insert(edge);
+                self.places_to_edges.insert(place.into(), HashSet::new());
+                self.places_to_edges.get_mut(&place.to_string()).unwrap().insert(edge.into());
             }
         };
         self
     }
-    pub fn edge_to_place(&mut self, edge: String, place: String) -> &mut Self {
-        match self.edges_to_places.get_mut(&edge) {
+    pub fn edge_to_place(&mut self, edge: &str, place: &str) -> &mut Self {
+        match self.edges_to_places.get_mut(&edge.to_string()) {
             Some(s) => {
-                s.insert(place);
+                s.insert(place.into());
             },
             None => {
-                self.edges_to_places.insert(edge.clone(), HashSet::new());
-                self.edges_to_places.get_mut(&edge).unwrap().insert(place);
+                self.edges_to_places.insert(edge.into(), HashSet::new());
+                self.edges_to_places.get_mut(&edge.to_string()).unwrap().insert(place.into());
             }
         };
         self
