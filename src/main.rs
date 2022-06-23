@@ -1,4 +1,5 @@
-use mnet_lib::{Place, GraphMaker, GraphRunner, Printer};
+use mnet_lib::{Place, GraphMaker, GraphRunner};
+use plotmux::plotsink::PlotSink;
 use mnet_macro::MnetPlace;
 
 //use rand;
@@ -40,7 +41,7 @@ impl CameraReader {
             camera: cam,
         }
     }
-    fn f(&mut self, _p: &Printer, _: ()) -> RgbImage {
+    fn f(&mut self, _p: &PlotSink, _: ()) -> RgbImage {
         let frame = self.camera.frame().unwrap();
         _p.println("got Image!");
         RgbImage::from_vec(frame.width(), frame.height(), frame.into_vec()).unwrap()
@@ -60,7 +61,7 @@ impl ImagePlotter {
             window: create_window(name, Default::default()).unwrap(),
         }
     }
-    fn f(&mut self, _p: &Printer, image: RgbImage) {
+    fn f(&mut self, _p: &PlotSink, image: RgbImage) {
         self.window.set_image("image",
             ImageView::new(ImageInfo::rgb8(image.width(), image.height()), image.as_raw())
         ).unwrap();

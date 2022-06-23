@@ -1,35 +1,13 @@
 use std::any::{Any, TypeId, type_name};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::vec::Vec;
-use sha1::{Sha1, Digest};
-
-pub struct Printer {
-    prefix: String,
-    color: (u8, u8, u8),
-}
-impl Printer {
-    fn make(prefix: String) -> Self {
-        let normalize = |x: f32| (((x / 255.0) * 155.0) + 100.0) as u8;
-        let mut hasher = Sha1::new();
-        hasher.update(&prefix);
-        let digest = hasher.finalize();
-        let color = (
-            normalize(digest[0].into()),
-            normalize(digest[2].into()),
-            normalize(digest[4].into()),
-        );
-        Self { prefix, color }
-    }
-    pub fn println(&self, s: &str) {
-        println!("\x1b[38;2;{};{};{}m[{}]\x1b[0m: {}", self.color.0, self.color.1, self.color.2, self.prefix, s);
-    }
-}
+use plotmux::{plotsink::PlotSink, plotmux::PlotMux};
 
 pub trait Place {
     fn in_type(&self) -> TypeId;
     fn out_types(&self) -> HashSet<TypeId>;
     fn out_types_names(&self) -> HashSet<String>;
-    fn run(&mut self, p: &Printer, x: Box<dyn Any>, out_map: &mut HashMap::<TypeId, Edge>);
+    fn run(&mut self, p: &PlotSink, x: Box<dyn Any>, out_map: &mut HashMap::<TypeId, Edge>);
 }
 
 #[derive(Debug)]
@@ -37,15 +15,15 @@ pub struct Edge {
     _name: String,
     type_name: String,
     type_id : TypeId,
-    vec : Vec<Box<dyn Any>>,
+    vec : VecDeque<Box<dyn Any>>,
 }
 impl Edge {
     pub fn push(&mut self, x: Box<dyn Any>) {
         assert_eq!((&*x).type_id(), self.type_id);
-        self.vec.push(x);
+        self.vec.push_back(x);
     }
     pub fn pop(&mut self) -> Box<dyn Any> {
-        self.vec.pop().unwrap()
+        self.vec.pop_front().unwrap()
     }
     pub fn len(&self) -> usize {
         self.vec.len()
@@ -78,7 +56,7 @@ impl GraphMaker {
                 _name: name.into(),
                 type_name: type_name::<T>().into(),
                 type_id: TypeId::of::<T>(),
-                vec: vec![],
+                vec: VecDeque::new(),
         });
         self.edges_to_places.insert(name.into(), HashSet::new());
         self
@@ -123,11 +101,13 @@ impl GraphMaker {
 }
 
 pub struct GraphRunner {
-    places: HashMap<String, (Printer, HashSet<String>, Box<dyn Place>, HashMap<TypeId, String>)>,
+    places: HashMap<String, (PlotSink, HashSet<String>, Box<dyn Place>, HashMap<TypeId, String>)>,
     edges: HashMap<String, Edge>,
+    plotmux: PlotMux,
 }
 impl GraphRunner {
     pub fn from_maker(mut maker: GraphMaker) -> Self {
+        let mut plotmux = PlotMux::make();
         let mut places = HashMap::new();
         for (place_name, p) in maker.places.drain() {
             let in_edges = {
@@ -157,17 +137,22 @@ impl GraphRunner {
                 );
                 out_edges
             };
-            places.insert(place_name.clone(), (Printer::make(place_name), in_edges, p, out_edges));
+            let plot_sink = plotmux.add_plot_sink(place_name.clone());
+            places.insert(place_name.clone(), (plot_sink, in_edges, p, out_edges));
         }
-        Self { places: places, edges: maker.edges }
+        Self { places: places, edges: maker.edges, plotmux: plotmux }
     }
     pub fn run(mut self: Self) -> HashMap<String, Edge> {
         let mut continue_executing = true;
+        use std::thread;
+        self.plotmux.make_ready();
+        thread::spawn(|| self.plotmux.spin());
         while continue_executing {
             continue_executing = false;
             for (_place_name, (printer, in_edges, place, out_edges_names)) in self.places.iter_mut() {
                 for e in in_edges.iter() {
                     if self.edges[e].len() > 0 {
+                        let input = self.edges.get_mut(e).unwrap().pop();
                         let mut out_edges = {
                             let mut out_edges = HashMap::new();
                             for (t, e_name) in out_edges_names.into_iter() {
@@ -175,7 +160,7 @@ impl GraphRunner {
                             }
                             out_edges
                         };
-                        place.run(printer, self.edges.get_mut(e).unwrap().pop(), &mut out_edges);
+                        place.run(printer, input, &mut out_edges);
                         for (t, e_name) in out_edges_names.into_iter() {
                             self.edges.insert(e_name.clone(), out_edges.remove(&t).unwrap());
                         }

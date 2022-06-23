@@ -78,7 +78,7 @@ fn impl_mnet_place_macro(ast: &syn::DeriveInput) -> TokenStream {
             }
             fn run(
                 &mut self,
-                p: &Printer,
+                p: &plotmux::plotsink::PlotSink,
                 x: Box<dyn ::std::any::Any>,
                 out_map: &mut ::std::collections::HashMap::<
                     ::std::any::TypeId,
