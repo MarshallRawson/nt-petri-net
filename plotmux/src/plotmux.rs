@@ -2,7 +2,7 @@ use sha1::{Sha1, Digest};
 use crossbeam_channel::{Sender, Receiver, bounded, Select};
 use serde::{Serialize, Deserialize};
 use bincode;
-use std::process::{Command, Child};
+use std::process::Command;
 use std::env;
 use std::path::Path;
 use std::net::{TcpListener, TcpStream};//, IpAddr, Ipv4Addr, Shutdown};
@@ -48,34 +48,28 @@ impl Plotable2d {
     }
 }
 
-struct PlotMuxServer {
-    listener: TcpListener,
-    port: u16,
-    ui_subprocess: Child,
-    client: TcpStream,
+fn make_client(receiver_names: &Vec<String>) -> TcpStream {
+    let listener = TcpListener::bind("localhost:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    Command::new(env::current_exe().expect("Getting current exe").as_path().parent().unwrap().join(Path::new("plotmuxui")))
+            .arg(format!("{}", port))
+            .args(receiver_names)
+            .spawn()
+            .expect("starting plotmuxui")
+    ;
+    let (client, socket) = listener.accept().unwrap();
+    assert_eq!("127.0.0.1".parse(), Ok(socket.ip()));
+    client
 }
-impl PlotMuxServer {
-    fn make(receiver_names: &Vec<String>) -> Self {
-        let listener = TcpListener::bind("localhost:0").unwrap();
-        let port = listener.local_addr().unwrap().port();
-        let ui_subprocess = Command::new(env::current_exe().expect("Getting current exe").as_path().parent().unwrap().join(Path::new("plotmuxui")))
-                .arg(format!("{}", port))
-                .args(receiver_names)
-                .spawn()
-                .expect("starting plotmuxui")
-        ;
-        let client = listener.accept().unwrap().0;
-        Self {listener, port, ui_subprocess, client}
-    }
-}
+
 pub struct PlotMux {
     receiver_names: Vec<String>,
     receivers: Vec<PlotReceiver>,
-    server: Option<PlotMuxServer>,
+    client: Option<TcpStream>,
 }
 impl PlotMux {
     pub fn make() -> Self {
-        PlotMux { receivers: vec![], receiver_names: vec![], server: None }
+        PlotMux { receivers: vec![], receiver_names: vec![], client: None }
     }
     pub fn add_plot_sink(&mut self, name: String) -> PlotSink {
         let (sender, receiver) = bounded(100);
@@ -85,10 +79,10 @@ impl PlotMux {
         PlotSink::make(name, c, (sender, receiver))
     }
     pub fn make_ready(&mut self) {
-        self.server = Some(PlotMuxServer::make(&self.receiver_names));
+        self.client = Some(make_client(&self.receiver_names));
     }
     pub fn spin(mut self) {
-        assert!(self.server.is_some());
+        assert!(self.client.is_some());
         // spin up plotmuxui in subprocess with correct port and source names
         |rs: &[PlotReceiver]| -> () {
             let mut sel =  Select::new();
@@ -100,8 +94,8 @@ impl PlotMux {
                 let idx = oper.index();
                 let data = oper.recv(&rs[idx]).unwrap();
                 let buf = bincode::serialize(&(idx, data)).unwrap();
-                self.server.as_mut().unwrap().client.write(&bincode::serialize(&buf.len()).unwrap()).unwrap();
-                self.server.as_mut().unwrap().client.write(&buf).unwrap();
+                self.client.as_mut().unwrap().write(&bincode::serialize(&buf.len()).unwrap()).unwrap();
+                self.client.as_mut().unwrap().write(&buf).unwrap();
             }
         } (self.receivers.as_mut_slice());
     }

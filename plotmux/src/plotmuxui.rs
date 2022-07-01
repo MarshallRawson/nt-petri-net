@@ -1,9 +1,9 @@
 use crate::plotsource::{PlotSource};
 use crate::plotmux::{PlotableData, color};
 use std::collections::HashMap;
-use std::net::{TcpStream};
+use std::net::TcpStream;
 use bincode;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::thread::sleep;
 use std::thread;
 use std::time::Duration;
