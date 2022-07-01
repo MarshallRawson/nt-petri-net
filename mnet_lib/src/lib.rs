@@ -1,6 +1,13 @@
 use std::any::{Any, TypeId, type_name};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque, hash_map::DefaultHasher};
+use std::hash::{Hash, Hasher};
 use std::vec::Vec;
+use std::path::{Path, PathBuf};
+use std::env;
+use tempfile::NamedTempFile;
+use std::io::Write;
+use std::process::Command;
+
 use plotmux::{plotsink::PlotSink, plotmux::PlotMux};
 
 pub trait Place {
@@ -98,6 +105,63 @@ impl GraphMaker {
         };
         self
     }
+    fn pseudo_hash(&self) -> u64 {
+        let mut places = self.places.keys().collect::<Vec<_>>();
+        places.sort();
+        let mut edges = self.edges.keys().collect::<Vec<_>>();
+        edges.sort();
+        use itertools::Itertools;
+        let mut places_to_edges = vec![];
+        for (p, es) in self.places_to_edges.iter().sorted_by_key(|x| x.0) {
+            let mut e = es.iter().collect::<Vec<_>>();
+            e.sort();
+            places_to_edges.push((p, e));
+        }
+        let mut edges_to_places = vec![];
+        for (e, ps) in self.edges_to_places.iter().sorted_by_key(|x| x.0) {
+            let mut p = ps.iter().collect::<Vec<_>>();
+            p.sort();
+            edges_to_places.push((e, p));
+        }
+        let mut s = DefaultHasher::new();
+        let t = (places, edges, places_to_edges, edges_to_places);
+        t.hash(&mut s);
+        s.finish()
+    }
+    fn png(&self) -> PathBuf {
+        let graph_cache = env::current_exe().expect("Getting current exe")
+            .as_path().parent().unwrap()
+            .join(Path::new("graph_png_cache"));
+        if !graph_cache.exists() {
+            std::fs::create_dir(graph_cache.clone()).unwrap();
+        }
+        let png_file_path = graph_cache.join(format!("{}.png", self.pseudo_hash()));
+        if !png_file_path.exists() {
+            let dot = {
+                let mut dot : String = "digraph MNet {\n".into();
+                for p in self.places.keys() {
+                    dot += &format!("{}[label=\"{}\" shape=ellipse];\n", p, p);
+                }
+                for e in self.edges.keys() {
+                    dot += &format!("{}[label=\"{}\" shape=diamond];\n", e, e);
+                }
+                for connection_set in [&self.places_to_edges, &self.edges_to_places] {
+                    for (source, sinks) in connection_set {
+                        for sink in sinks {
+                            dot += &format!("{} -> {}[label=\"\"];\n", source, sink);
+                        }
+                    }
+                }
+                dot += "}";
+                dot
+            };
+            let mut dot_file = NamedTempFile::new().unwrap();
+            dot_file.write_all(dot.as_bytes()).unwrap();
+            dot_file.flush().unwrap();
+            Command::new("dot").arg(dot_file.path()).arg("-Tpng").arg("-o").arg(&png_file_path).status().expect("dot failed");
+        }
+        png_file_path
+    }
 }
 
 pub struct GraphRunner {
@@ -107,7 +171,7 @@ pub struct GraphRunner {
 }
 impl GraphRunner {
     pub fn from_maker(mut maker: GraphMaker) -> Self {
-        let mut plotmux = PlotMux::make();
+        let mut plotmux = PlotMux::make(maker.png().into_os_string().into_string().unwrap());
         let mut places = HashMap::new();
         for (place_name, p) in maker.places.drain() {
             let in_edges = {

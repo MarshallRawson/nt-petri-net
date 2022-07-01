@@ -48,10 +48,11 @@ impl Plotable2d {
     }
 }
 
-fn make_client(receiver_names: &Vec<String>) -> TcpStream {
+fn make_client(png_path: &String, receiver_names: &Vec<String>) -> TcpStream {
     let listener = TcpListener::bind("localhost:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     Command::new(env::current_exe().expect("Getting current exe").as_path().parent().unwrap().join(Path::new("plotmuxui")))
+            .arg(format!("{}", png_path))
             .arg(format!("{}", port))
             .args(receiver_names)
             .spawn()
@@ -66,10 +67,11 @@ pub struct PlotMux {
     receiver_names: Vec<String>,
     receivers: Vec<PlotReceiver>,
     client: Option<TcpStream>,
+    png_path: String
 }
 impl PlotMux {
-    pub fn make() -> Self {
-        PlotMux { receivers: vec![], receiver_names: vec![], client: None }
+    pub fn make(png_path: String) -> Self {
+        PlotMux { receivers: vec![], receiver_names: vec![], client: None, png_path: png_path }
     }
     pub fn add_plot_sink(&mut self, name: String) -> PlotSink {
         let (sender, receiver) = bounded(100);
@@ -79,7 +81,7 @@ impl PlotMux {
         PlotSink::make(name, c, (sender, receiver))
     }
     pub fn make_ready(&mut self) {
-        self.client = Some(make_client(&self.receiver_names));
+        self.client = Some(make_client(&self.png_path, &self.receiver_names));
     }
     pub fn spin(mut self) {
         assert!(self.client.is_some());
