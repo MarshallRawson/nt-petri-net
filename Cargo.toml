@@ -11,6 +11,10 @@ path = "src/plotmuxui.rs"
 name = "sin"
 path = "src/sin.rs"
 
+[[bin]]
+name = "radio"
+path = "src/radio.rs"
+
 [dependencies]
 
 mnet_lib = { path = "./mnet_lib" }

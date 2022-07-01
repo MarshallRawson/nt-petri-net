@@ -9,6 +9,5 @@ fn main() {
     args.pop_front();
     let port = args[0].parse().expect("PORT arg malformed!");
     args.pop_front();
-    println!("{}", graph_png_path);
     PlotMuxUi::make(&graph_png_path, port, args.into()).spin();
 }
