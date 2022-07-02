@@ -1489,7 +1489,6 @@ name = "mnet_lib"
 version = "0.1.0"
 dependencies = [
  "itertools",
- "plotmux",
  "tempfile",
 ]
 

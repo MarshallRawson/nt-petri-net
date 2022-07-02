@@ -1,5 +1,4 @@
 use mnet_lib::{Place, GraphMaker, GraphRunner};
-use plotmux::plotsink::PlotSink;
 use mnet_macro::MnetPlace;
 use std::{thread, time};
 
@@ -8,7 +7,7 @@ use std::{thread, time};
 struct HackOneRf;
 impl HackOneRf {
     // get samples from hack one rf (complex)
-    fn f(&mut self, _p: &PlotSink, _: ()) -> () {
+    fn f(&mut self, _: ()) -> () {
         thread::sleep(time::Duration::from_millis(10));
     }
 }
@@ -18,7 +17,7 @@ impl HackOneRf {
 struct FreqShift;
 impl FreqShift {
     // multiply samples by sin (frequency shift
-    fn f(&mut self, _p: &PlotSink, _: ()) -> () {
+    fn f(&mut self, _: ()) -> () {
     }
 }
 
@@ -27,7 +26,7 @@ impl FreqShift {
 struct LowPass;
 impl LowPass {
     // Low pass filter
-    fn f(&mut self, _p: &PlotSink, _: ()) -> () {
+    fn f(&mut self, _: ()) -> () {
     }
 }
 
@@ -36,13 +35,13 @@ impl LowPass {
 struct Plot;
 impl Plot {
     // plot waterfall, fft, and time series data
-    fn f(&mut self, _p: &PlotSink, _: ()) -> () {
+    fn f(&mut self, _: ()) -> () {
     }
 }
 
 
 fn main() {
-    let mut g = GraphMaker::make(); g
+    let g = GraphMaker::make()
         .set_start_tokens::<()>("start", vec![()])
         .edge_to_place("start", "HackOneRf").add_place("HackOneRf", Box::new(HackOneRf{}))
         .place_to_edge("HackOneRf", "raw").add_edge::<()>("raw")

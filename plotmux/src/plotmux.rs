@@ -4,7 +4,7 @@ use serde::{Serialize, Deserialize};
 use bincode;
 use std::process::Command;
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::net::{TcpListener, TcpStream};//, IpAddr, Ipv4Addr, Shutdown};
 use std::io::Write;
 
@@ -67,11 +67,10 @@ pub struct PlotMux {
     receiver_names: Vec<String>,
     receivers: Vec<PlotReceiver>,
     client: Option<TcpStream>,
-    png_path: String
 }
 impl PlotMux {
-    pub fn make(png_path: String) -> Self {
-        PlotMux { receivers: vec![], receiver_names: vec![], client: None, png_path: png_path }
+    pub fn make() -> Self {
+        PlotMux { receivers: vec![], receiver_names: vec![], client: None }
     }
     pub fn add_plot_sink(&mut self, name: String) -> PlotSink {
         let (sender, receiver) = bounded(100);
@@ -80,12 +79,11 @@ impl PlotMux {
         self.receivers.push(receiver.clone());
         PlotSink::make(name, c, (sender, receiver))
     }
-    pub fn make_ready(&mut self) {
-        self.client = Some(make_client(&self.png_path, &self.receiver_names));
+    pub fn make_ready(&mut self, png_path: &PathBuf) {
+        self.client = Some(make_client(&png_path.as_os_str().to_str().unwrap().into(), &self.receiver_names));
     }
     pub fn spin(mut self) {
         assert!(self.client.is_some());
-        // spin up plotmuxui in subprocess with correct port and source names
         |rs: &[PlotReceiver]| -> () {
             let mut sel =  Select::new();
             for r in rs {
