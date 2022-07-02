@@ -15,6 +15,10 @@ path = "src/sin.rs"
 name = "radio"
 path = "src/radio.rs"
 
+[[bin]]
+name = "webcam"
+path = "src/webcam.rs"
+
 [dependencies]
 
 mnet_lib = { path = "./mnet_lib" }
