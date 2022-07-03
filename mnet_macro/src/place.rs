@@ -66,19 +66,21 @@ fn impl_mnet_place_macro(ast: &syn::DeriveInput) -> TokenStream {
         out_type_block_names.parse().unwrap()
     };
     let gen = quote! {
-        impl Place for #name {
-            fn in_type(&self) -> ::std::any::TypeId {
+        impl #name {
+            fn in_type() -> ::std::any::TypeId {
                 ::std::any::TypeId::of::<#in_type>()
             }
-            fn out_types(&self) -> ::std::collections::HashSet<::std::any::TypeId> {
+            fn out_types() -> ::std::collections::HashSet<::std::any::TypeId> {
                 #out_type_block
             }
-            fn out_types_names(&self) -> ::std::collections::HashSet<::std::string::String> {
+            fn out_types_names() -> ::std::collections::HashSet<::std::string::String> {
                 #out_type_block_names
             }
+        }
+        impl Place for #name {
             fn run(
                 &mut self,
-                x: Box<dyn ::std::any::Any>,
+                x: Box<dyn ::std::any::Any + ::std::marker::Send>,
                 out_map: &mut ::std::collections::HashMap::<
                     ::std::any::TypeId,
                     mnet_lib::Edge
@@ -119,7 +121,7 @@ impl Parse for PlaceEnumParams {
             for v in out_variants {
                 ret += &format!(
                     "{}(y) => {{
-                        let y : Box<dyn ::std::any::Any> = ::std::boxed::Box::new(y);
+                        let y : Box<dyn ::std::any::Any + ::std::marker::Send> = ::std::boxed::Box::new(y);
                         let out_type = (&*y).type_id();
                         out_map.get_mut(&out_type).unwrap().push(y);
                         out_type

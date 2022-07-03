@@ -1,4 +1,4 @@
-use mnet_lib::{Place, graph};
+use mnet_lib::{Place, PlaceMaker, graph};
 use plotmux::{plotsink::PlotSink, plotmux::PlotMux};
 use mnet_macro::MnetPlace;
 use std::thread;
@@ -15,7 +15,7 @@ use std::thread;
 //#[mnet_place_enum(Letter::A, Type1, Letter::B, Type2)]
 //struct MyEnumPlace;
 //impl MyEnumPlace {
-//    fn my_enum_function(&self, _: &Printer, _x: Letter) -> Letter {
+//    fn my_enum_function(&self, _x: Letter) -> Letter {
 //        if rand::prelude::random() {
 //            Letter::A(Type1{})
 //        } else {
@@ -34,15 +34,18 @@ struct CameraReader {
     p: PlotSink,
 }
 impl CameraReader {
-    fn make(plotmux: &mut PlotMux) ->Self {
-        let width = 1920_u32;
-        let height = 1080_u32;
-        let mut cam = Camera::new(0, Some(CameraFormat::new_from(width, height, FrameFormat::MJPEG, 30))).unwrap();
-        cam.open_stream().unwrap();
-        Self {
-            camera: cam,
-            p: plotmux.add_plot_sink("CameraRead".into()),
-        }
+    fn maker(plotmux: &mut PlotMux) -> PlaceMaker {
+        let plotsink = plotmux.add_plot_sink("CameraRead".into());
+        PlaceMaker!(Box::new(move || {
+            let width = 1920_u32;
+            let height = 1080_u32;
+            let mut cam = Camera::new(0, Some(CameraFormat::new_from(width, height, FrameFormat::MJPEG, 30))).unwrap();
+            cam.open_stream().unwrap();
+            Box::new(Self {
+                camera: cam,
+                p: plotsink,
+            })
+        }))
     }
     fn f(&mut self, _: ()) -> RgbImage {
         let frame = self.camera.frame().unwrap();
@@ -60,11 +63,14 @@ struct ImagePlotter {
     p: PlotSink,
 }
 impl ImagePlotter {
-    fn make(name: &str, plotmux: &mut PlotMux) -> Self {
-        Self {
-            window: create_window(name, Default::default()).unwrap(),
-            p: plotmux.add_plot_sink(name.into()),
-        }
+    fn maker(name: String, plotmux: &mut PlotMux) -> PlaceMaker {
+        let plotsink = plotmux.add_plot_sink(name.clone());
+        PlaceMaker!(Box::new(move ||
+            Box::new(Self {
+                window: create_window(&name, Default::default()).unwrap(),
+                p: plotsink,
+            })
+        ))
     }
     fn f(&mut self, image: RgbImage) {
         self.window.set_image("image",
@@ -80,11 +86,11 @@ fn main() {
     let g = graph::Maker::make()
         .set_start_tokens::<()>("Start", vec![()])
         .edge_to_place("Start", "CameraRead")
-        .add_place("CameraRead", Box::new(CameraReader::make(&mut plotmux)))
+        .add_place("CameraRead", CameraReader::maker(&mut plotmux))
         .place_to_edge("CameraRead", "Image")
         .add_edge::<RgbImage>("Image")
         .edge_to_place("Image", "PlotImage")
-        .add_place("PlotImage", Box::new(ImagePlotter::make("Camera", &mut plotmux)))
+        .add_place("PlotImage", ImagePlotter::maker("Camera".into(), &mut plotmux))
         .place_to_edge("PlotImage", "Start")
     ;
     plotmux.make_ready(&g.png());

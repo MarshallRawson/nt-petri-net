@@ -1,4 +1,4 @@
-use mnet_lib::{Place, graph};
+use mnet_lib::{Place, PlaceMaker, graph};
 use plotmux::{plotsink::PlotSink, plotmux::PlotMux};
 use mnet_macro::MnetPlace;
 use std::{thread, time};
@@ -14,6 +14,9 @@ impl Sin {
         thread::sleep(time::Duration::from_millis(10));
         t + 0.01
     }
+    fn maker(plotsink: PlotSink) -> PlaceMaker {
+        PlaceMaker!(Box::new(move || Box::new(Sin{ p: plotsink})))
+    }
 }
 
 fn main() {
@@ -21,7 +24,7 @@ fn main() {
     let g = graph::Maker::make()
         .set_start_tokens::<f64>("time", vec![0.])
         .edge_to_place("time", "sin")
-        .add_place("sin", Box::new(Sin{ p: plotmux.add_plot_sink("sin".into())}))
+        .add_place("sin", Sin::maker(plotmux.add_plot_sink("sin".into())))
         .place_to_edge("sin", "time")
     ;
     plotmux.make_ready(&g.png());
