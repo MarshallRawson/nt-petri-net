@@ -35,7 +35,7 @@ struct CameraReader {
 }
 impl CameraReader {
     fn maker(plotmux: &mut PlotMux) -> PlaceMaker {
-        let plotsink = plotmux.add_plot_sink("CameraRead".into());
+        let plotsink = plotmux.add_plot_sink("CameraRead");
         PlaceMaker!(Box::new(move || {
             let width = 1920_u32;
             let height = 1080_u32;
@@ -64,7 +64,7 @@ struct ImagePlotter {
 }
 impl ImagePlotter {
     fn maker(name: String, plotmux: &mut PlotMux) -> PlaceMaker {
-        let plotsink = plotmux.add_plot_sink(name.clone());
+        let plotsink = plotmux.add_plot_sink(&name);
         PlaceMaker!(Box::new(move ||
             Box::new(Self {
                 window: create_window(&name, Default::default()).unwrap(),

@@ -72,12 +72,12 @@ impl PlotMux {
     pub fn make() -> Self {
         PlotMux { receivers: vec![], receiver_names: vec![], client: None }
     }
-    pub fn add_plot_sink(&mut self, name: String) -> PlotSink {
+    pub fn add_plot_sink(&mut self, name: &str) -> PlotSink {
         let (sender, receiver) = bounded(100);
         let c = color(&name);
-        self.receiver_names.push(name.clone());
+        self.receiver_names.push(name.into());
         self.receivers.push(receiver.clone());
-        PlotSink::make(name, c, (sender, receiver))
+        PlotSink::make(name.into(), c, (sender, receiver))
     }
     pub fn make_ready(&mut self, png_path: &PathBuf) {
         self.client = Some(make_client(&png_path.as_os_str().to_str().unwrap().into(), &self.receiver_names));
