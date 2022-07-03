@@ -3,7 +3,7 @@ name = "mnet_lib"
 version = "0.1.0"
 edition = "2021"
 
-path = "src/"
+path = "src/*"
 
 [dependencies]
 itertools = "0.10.3"

@@ -1,4 +1,4 @@
-use mnet_lib::{Place, GraphMaker, GraphRunner};
+use mnet_lib::{Place, graph};
 use mnet_macro::MnetPlace;
 use std::{thread, time};
 
@@ -41,7 +41,7 @@ impl Plot {
 
 
 fn main() {
-    let g = GraphMaker::make()
+    let g = graph::Maker::make()
         .set_start_tokens::<()>("start", vec![()])
         .edge_to_place("start", "HackOneRf").add_place("HackOneRf", Box::new(HackOneRf{}))
         .place_to_edge("HackOneRf", "raw").add_edge::<()>("raw")
@@ -52,5 +52,5 @@ fn main() {
         .edge_to_place("filtered", "Plot").add_place("Plot", Box::new(Plot{}))
         .place_to_edge("Plot", "start")
     ;
-    println!("{:?}", GraphRunner::from_maker(g).run());
+    println!("{:?}", graph::Runner::from_maker(g).run());
 }

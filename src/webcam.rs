@@ -1,4 +1,4 @@
-use mnet_lib::{Place, GraphMaker, GraphRunner};
+use mnet_lib::{Place, graph};
 use plotmux::{plotsink::PlotSink, plotmux::PlotMux};
 use mnet_macro::MnetPlace;
 use std::thread;
@@ -77,7 +77,7 @@ impl ImagePlotter {
 #[show_image::main]
 fn main() {
     let mut plotmux = PlotMux::make();
-    let g = GraphMaker::make()
+    let g = graph::Maker::make()
         .set_start_tokens::<()>("Start", vec![()])
         .edge_to_place("Start", "CameraRead")
         .add_place("CameraRead", Box::new(CameraReader::make(&mut plotmux)))
@@ -89,6 +89,6 @@ fn main() {
     ;
     plotmux.make_ready(&g.png());
     thread::spawn(move || plotmux.spin());
-    let e = GraphRunner::from_maker(g).run();
+    let e = graph::Runner::from_maker(g).run();
     println!("{:#?}", e);
 }

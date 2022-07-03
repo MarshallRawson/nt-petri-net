@@ -83,7 +83,7 @@ fn impl_mnet_place_macro(ast: &syn::DeriveInput) -> TokenStream {
                     ::std::any::TypeId,
                     mnet_lib::Edge
                 >
-            ) {
+            ) -> ::std::any::TypeId {
                 let y = self.#function(*x.downcast::<#in_type>().unwrap());
                 #out_section
             }
@@ -120,7 +120,9 @@ impl Parse for PlaceEnumParams {
                 ret += &format!(
                     "{}(y) => {{
                         let y : Box<dyn ::std::any::Any> = ::std::boxed::Box::new(y);
-                        out_map.get_mut(&(&*y).type_id()).unwrap().push(y);
+                        let out_type = (&*y).type_id();
+                        out_map.get_mut(&out_type).unwrap().push(y);
+                        out_type
                     }},\n",
                     v.to_token_stream(),
                 );
@@ -153,7 +155,8 @@ impl Parse for PlaceParams {
         let (out_section, out_type) : (proc_macro2::TokenStream, syn::Type) = {
             let out_type : syn::Type = content.parse()?;
             let ret = format!("
-                out_map.get_mut(&::std::any::TypeId::of::<{}>()).unwrap().push(::std::boxed::Box::new(y));\n",
+                out_map.get_mut(&::std::any::TypeId::of::<{}>()).unwrap().push(::std::boxed::Box::new(y)); ::std::any::TypeId::of::<{}>()\n",
+                out_type.to_token_stream(),
                 out_type.to_token_stream(),
             ).to_string();
             //println!("{}", ret);
