@@ -1,25 +1,23 @@
-use std::any::{TypeId, type_name};
-use std::collections::{HashMap, HashSet, VecDeque, hash_map::DefaultHasher};
-use std::hash::{Hash, Hasher};
-use std::vec::Vec;
-use std::path::{Path, PathBuf};
-use std::marker::Send;
-use std::env;
-use tempfile::NamedTempFile;
-use std::io::Write;
-use std::process::Command;
 use itertools::Itertools;
+use std::any::{type_name, TypeId};
+use std::collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque};
+use std::env;
+use std::hash::{Hash, Hasher};
+use std::io::Write;
+use std::marker::Send;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::thread;
+use std::vec::Vec;
+use tempfile::NamedTempFile;
 
-use crate::{Place, PlaceMaker, Edge};
-
+use crate::{Edge, Place, PlaceMaker};
 
 pub struct Maker {
     places: HashMap<String, PlaceMaker>,
     edges: HashMap<String, Edge>,
     places_to_edges: HashMap<String, HashSet<String>>,
     edges_to_places: HashMap<String, HashSet<String>>,
-
 }
 impl Maker {
     pub fn make() -> Self {
@@ -36,16 +34,23 @@ impl Maker {
         self
     }
     pub fn add_edge<T: 'static + Send>(mut self, name: &str) -> Self {
-        self.edges.insert(name.into(), Edge {
+        self.edges.insert(
+            name.into(),
+            Edge {
                 _name: name.into(),
                 type_name: type_name::<T>().into(),
                 type_id: TypeId::of::<T>(),
                 vec: VecDeque::new(),
-        });
+            },
+        );
         self.edges_to_places.insert(name.into(), HashSet::new());
         self
     }
-    pub fn set_start_tokens<T: 'static + Send>(mut self, edge: &str, mut start_tokens: Vec<T>) -> Self {
+    pub fn set_start_tokens<T: 'static + Send>(
+        mut self,
+        edge: &str,
+        mut start_tokens: Vec<T>,
+    ) -> Self {
         match self.edges.get_mut(&edge.to_string()) {
             Some(e) => {
                 for t in start_tokens.drain(..) {
@@ -53,7 +58,9 @@ impl Maker {
                 }
             }
             None => {
-                self = self.add_edge::<T>(edge.into()).set_start_tokens::<T>(edge, start_tokens);
+                self = self
+                    .add_edge::<T>(edge.into())
+                    .set_start_tokens::<T>(edge, start_tokens);
             }
         }
         self
@@ -62,10 +69,13 @@ impl Maker {
         match self.places_to_edges.get_mut(&place.to_string()) {
             Some(s) => {
                 s.insert(edge.into());
-            },
+            }
             None => {
                 self.places_to_edges.insert(place.into(), HashSet::new());
-                self.places_to_edges.get_mut(&place.to_string()).unwrap().insert(edge.into());
+                self.places_to_edges
+                    .get_mut(&place.to_string())
+                    .unwrap()
+                    .insert(edge.into());
             }
         };
         self
@@ -74,10 +84,13 @@ impl Maker {
         match self.edges_to_places.get_mut(&edge.to_string()) {
             Some(s) => {
                 s.insert(place.into());
-            },
+            }
             None => {
                 self.edges_to_places.insert(edge.into(), HashSet::new());
-                self.edges_to_places.get_mut(&edge.to_string()).unwrap().insert(place.into());
+                self.edges_to_places
+                    .get_mut(&edge.to_string())
+                    .unwrap()
+                    .insert(place.into());
             }
         };
         self
@@ -105,8 +118,11 @@ impl Maker {
         s.finish()
     }
     pub fn png(&self) -> PathBuf {
-        let graph_cache = env::current_exe().expect("Getting current exe")
-            .as_path().parent().unwrap()
+        let graph_cache = env::current_exe()
+            .expect("Getting current exe")
+            .as_path()
+            .parent()
+            .unwrap()
             .join(Path::new("graph_png_cache"));
         if !graph_cache.exists() {
             std::fs::create_dir(graph_cache.clone()).unwrap();
@@ -114,7 +130,7 @@ impl Maker {
         let png_file_path = graph_cache.join(format!("{}.png", self.pseudo_hash()));
         if !png_file_path.exists() {
             let dot = {
-                let mut dot : String = "digraph MNet {\n".into();
+                let mut dot: String = "digraph MNet {\n".into();
                 for p in self.places.keys() {
                     dot += &format!("{}[label=\"{}\" shape=ellipse];\n", p, p);
                 }
@@ -134,7 +150,13 @@ impl Maker {
             let mut dot_file = NamedTempFile::new().unwrap();
             dot_file.write_all(dot.as_bytes()).unwrap();
             dot_file.flush().unwrap();
-            Command::new("dot").arg(dot_file.path()).arg("-Tpng").arg("-o").arg(&png_file_path).status().expect("dot failed");
+            Command::new("dot")
+                .arg(dot_file.path())
+                .arg("-Tpng")
+                .arg("-o")
+                .arg(&png_file_path)
+                .status()
+                .expect("dot failed");
         }
         png_file_path
     }
@@ -146,8 +168,14 @@ struct Worker {
 }
 impl Worker {
     fn run(mut self) -> HashMap<String, Edge> {
-        let mut places = self.place_infos.into_iter().map(|(name, (in_edges, make_place, out_edges))| (name, (in_edges, (make_place.make)(), out_edges)))
-            .collect::<HashMap<String, (HashSet<String>, Box<dyn Place>, HashMap<TypeId, String>)>>();
+        let mut places = self
+            .place_infos
+            .into_iter()
+            .map(|(name, (in_edges, make_place, out_edges))| {
+                (name, (in_edges, (make_place.make)(), out_edges))
+            })
+            .collect::<HashMap<String, (HashSet<String>, Box<dyn Place>, HashMap<TypeId, String>)>>(
+            );
         let mut continue_executing = true;
         while continue_executing {
             continue_executing = false;
@@ -164,7 +192,8 @@ impl Worker {
                         };
                         place.run(input, &mut out_edges);
                         for (t, e_name) in out_edges_names.into_iter() {
-                            self.edges.insert(e_name.clone(), out_edges.remove(&t).unwrap());
+                            self.edges
+                                .insert(e_name.clone(), out_edges.remove(&t).unwrap());
                         }
                         assert_eq!(out_edges.len(), 0);
                         continue_executing = true;
@@ -195,24 +224,35 @@ impl Runner {
                 in_edges
             };
             let out_edges = {
-                let mut out_edges : HashMap<TypeId, String> = HashMap::new();
+                let mut out_edges: HashMap<TypeId, String> = HashMap::new();
                 for edge_name in &maker.places_to_edges[&place_name] {
-                    //let edge = self.edges[edge_name].clone();
                     assert!(!out_edges.contains_key(&maker.edges[edge_name].type_id));
                     out_edges.insert(maker.edges[edge_name].type_id, edge_name.clone());
                 }
-                assert_eq!(out_edges.clone().into_keys().collect::<HashSet<TypeId>>(), (p.out_types)(),
-                    "Place: {:?} has out edges: {:?}, but {:?} are not connected!", place_name,
+                assert_eq!(
+                    out_edges.clone().into_keys().collect::<HashSet<TypeId>>(),
+                    (p.out_types)(),
+                    "Place: {:?} has out edges: {:?}, but {:?} are not connected!",
+                    place_name,
                     (p.out_types_names)(),
-                    (p.out_types_names)().difference(&maker.edges.iter().map(
-                        |(_, e)| e.type_name.clone()
-                    ).collect::<HashSet<String>>())
+                    (p.out_types_names)().difference(
+                        &maker
+                            .edges
+                            .iter()
+                            .map(|(_, e)| e.type_name.clone())
+                            .collect::<HashSet<String>>()
+                    )
                 );
                 out_edges
             };
             places.insert(place_name.clone(), (in_edges, p, out_edges));
         }
-        Self { workers: vec![Worker {place_infos: places, edges: maker.edges }] }
+        Self {
+            workers: vec![Worker {
+                place_infos: places,
+                edges: maker.edges,
+            }],
+        }
     }
     pub fn run(mut self: Self) -> HashMap<String, Edge> {
         let mut worker_threads = vec![];
@@ -226,8 +266,7 @@ impl Runner {
                 let (edge_name, edge) = kv;
                 if !edges_end_state.contains_key(&edge_name) {
                     edges_end_state.insert(edge_name, edge);
-                }
-                else {
+                } else {
                     //edges_end_state.get_mut(&edge_name).unwrap() = edge;
                 }
             }

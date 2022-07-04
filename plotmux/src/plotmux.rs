@@ -1,14 +1,14 @@
-use sha1::{Sha1, Digest};
-use crossbeam_channel::{Sender, Receiver, bounded, Select};
-use serde::{Serialize, Deserialize};
 use bincode;
-use std::process::Command;
+use crossbeam_channel::{bounded, Receiver, Select, Sender};
+use serde::{Deserialize, Serialize};
+use sha1::{Digest, Sha1};
 use std::env;
-use std::path::{Path, PathBuf};
-use std::net::{TcpListener, TcpStream};//, IpAddr, Ipv4Addr, Shutdown};
 use std::io::Write;
+use std::net::{TcpListener, TcpStream}; //, IpAddr, Ipv4Addr, Shutdown};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use crate::plotsink::{PlotSink};
+use crate::plotsink::PlotSink;
 
 pub type Color = (u8, u8, u8);
 pub fn color(s: &str) -> Color {
@@ -33,31 +33,43 @@ pub enum PlotableData {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct PlotableString { pub s: String }
+pub struct PlotableString {
+    pub s: String,
+}
 impl From<&str> for PlotableData {
     fn from(item: &str) -> PlotableData {
-        PlotableData::String(PlotableString{ s: item.into() })
+        PlotableData::String(PlotableString { s: item.into() })
     }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Plotable2d { pub series: String, pub x: f64, pub y: f64 }
+pub struct Plotable2d {
+    pub series: String,
+    pub x: f64,
+    pub y: f64,
+}
 impl Plotable2d {
     pub fn make(series: String, x: f64, y: f64) -> PlotableData {
-        PlotableData::Series2d(Plotable2d{series, x, y})
+        PlotableData::Series2d(Plotable2d { series, x, y })
     }
 }
 
 fn make_client(png_path: &String, receiver_names: &Vec<String>) -> TcpStream {
     let listener = TcpListener::bind("localhost:0").unwrap();
     let port = listener.local_addr().unwrap().port();
-    Command::new(env::current_exe().expect("Getting current exe").as_path().parent().unwrap().join(Path::new("plotmuxui")))
-            .arg(format!("{}", png_path))
-            .arg(format!("{}", port))
-            .args(receiver_names)
-            .spawn()
-            .expect("starting plotmuxui")
-    ;
+    Command::new(
+        env::current_exe()
+            .expect("Getting current exe")
+            .as_path()
+            .parent()
+            .unwrap()
+            .join(Path::new("plotmuxui")),
+    )
+    .arg(format!("{}", png_path))
+    .arg(format!("{}", port))
+    .args(receiver_names)
+    .spawn()
+    .expect("starting plotmuxui");
     let (client, socket) = listener.accept().unwrap();
     assert_eq!("127.0.0.1".parse(), Ok(socket.ip()));
     client
@@ -70,7 +82,11 @@ pub struct PlotMux {
 }
 impl PlotMux {
     pub fn make() -> Self {
-        PlotMux { receivers: vec![], receiver_names: vec![], client: None }
+        PlotMux {
+            receivers: vec![],
+            receiver_names: vec![],
+            client: None,
+        }
     }
     pub fn add_plot_sink(&mut self, name: &str) -> PlotSink {
         let (sender, receiver) = bounded(100);
@@ -80,12 +96,15 @@ impl PlotMux {
         PlotSink::make(name.into(), c, (sender, receiver))
     }
     pub fn make_ready(&mut self, png_path: &PathBuf) {
-        self.client = Some(make_client(&png_path.as_os_str().to_str().unwrap().into(), &self.receiver_names));
+        self.client = Some(make_client(
+            &png_path.as_os_str().to_str().unwrap().into(),
+            &self.receiver_names,
+        ));
     }
     pub fn spin(mut self) {
         assert!(self.client.is_some());
         |rs: &[PlotReceiver]| -> () {
-            let mut sel =  Select::new();
+            let mut sel = Select::new();
             for r in rs {
                 sel.recv(&r);
             }
@@ -94,9 +113,13 @@ impl PlotMux {
                 let idx = oper.index();
                 let data = oper.recv(&rs[idx]).unwrap();
                 let buf = bincode::serialize(&(idx, data)).unwrap();
-                self.client.as_mut().unwrap().write(&bincode::serialize(&buf.len()).unwrap()).unwrap();
+                self.client
+                    .as_mut()
+                    .unwrap()
+                    .write(&bincode::serialize(&buf.len()).unwrap())
+                    .unwrap();
                 self.client.as_mut().unwrap().write(&buf).unwrap();
             }
-        } (self.receivers.as_mut_slice());
+        }(self.receivers.as_mut_slice());
     }
 }

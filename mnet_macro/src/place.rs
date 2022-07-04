@@ -1,10 +1,10 @@
 use proc_macro::TokenStream;
+use proc_macro2;
 use quote::quote;
 use quote::ToTokens;
 use syn;
-use syn::{Result, Ident, Token, Type};
 use syn::parse::{Parse, ParseStream};
-use proc_macro2;
+use syn::{Ident, Result, Token, Type};
 
 #[proc_macro_derive(MnetPlace, attributes(mnet_place_enum, mnet_place))]
 pub fn mnet_place_derive(input: TokenStream) -> TokenStream {
@@ -24,40 +24,43 @@ fn impl_mnet_place_macro(ast: &syn::DeriveInput) -> TokenStream {
         mut out_types,
         mut out_section,
     } = {
-        let attribute = ast.attrs.iter().filter(
-            |a| a.path.segments.len() == 1 && a.path.segments[0].ident == "mnet_place"
-        ).nth(0).expect("mnet_place is required by MnetPlace");
+        let attribute = ast
+            .attrs
+            .iter()
+            .filter(|a| a.path.segments.len() == 1 && a.path.segments[0].ident == "mnet_place")
+            .nth(0)
+            .expect("mnet_place is required by MnetPlace");
         syn::parse2(attribute.tokens.clone()).expect("Invalid mnet_place attribute!")
     };
-    let place_enum : Option<PlaceEnumParams> = match ast.attrs.iter().filter(
-        |a| a.path.segments.len() == 1 && a.path.segments[0].ident == "mnet_place_enum"
-    ).nth(0) {
-        Some(attribute) =>
-            Some(
-                syn::parse2(attribute.tokens.clone())
-                    .expect("Invalid mnet_place attribute!")
-            ),
+    let place_enum: Option<PlaceEnumParams> = match ast
+        .attrs
+        .iter()
+        .filter(|a| a.path.segments.len() == 1 && a.path.segments[0].ident == "mnet_place_enum")
+        .nth(0)
+    {
+        Some(attribute) => {
+            Some(syn::parse2(attribute.tokens.clone()).expect("Invalid mnet_place attribute!"))
+        }
         None => None,
     };
     if let Some(enum_params) = place_enum {
         out_section = enum_params.out_section;
         out_types = enum_params.out_types;
     }
-    let out_type_block : proc_macro2::TokenStream = {
+    let out_type_block: proc_macro2::TokenStream = {
         let mut out_type_block = "::std::collections::HashSet::from([\n".to_string();
         for t in &out_types {
-            out_type_block += &format!("::std::any::TypeId::of::<{}>(),\n",
-                t.to_token_stream()
-            );
+            out_type_block += &format!("::std::any::TypeId::of::<{}>(),\n", t.to_token_stream());
         }
         out_type_block += "])";
         //println!("{}", out_type_block);
         out_type_block.parse().unwrap()
     };
-    let out_type_block_names : proc_macro2::TokenStream = {
+    let out_type_block_names: proc_macro2::TokenStream = {
         let mut out_type_block_names = "::std::collections::HashSet::from([\n".to_string();
         for t in &out_types {
-            out_type_block_names += &format!("::std::any::type_name::<{}>().into(),\n",
+            out_type_block_names += &format!(
+                "::std::any::type_name::<{}>().into(),\n",
                 t.to_token_stream()
             );
         }
@@ -103,7 +106,7 @@ impl Parse for PlaceEnumParams {
     fn parse(input: ParseStream) -> Result<Self> {
         let content;
         syn::parenthesized!(content in input);
-        let (out_variants, out_types) : (Vec::<syn::Type>, Vec::<syn::Type>) = {
+        let (out_variants, out_types): (Vec<syn::Type>, Vec<syn::Type>) = {
             let mut out_types = vec![];
             let mut out_variants = vec![];
             while let Ok(variant) = content.parse() {
@@ -116,7 +119,7 @@ impl Parse for PlaceEnumParams {
             }
             (out_variants, out_types)
         };
-        let out_section : proc_macro2::TokenStream = {
+        let out_section: proc_macro2::TokenStream = {
             let mut ret = "match y {\n".to_string();
             for v in out_variants {
                 ret += &format!(
@@ -154,8 +157,8 @@ impl Parse for PlaceParams {
         content.parse::<Token![,]>()?;
         let in_type = content.parse()?;
         content.parse::<Token![,]>()?;
-        let (out_section, out_type) : (proc_macro2::TokenStream, syn::Type) = {
-            let out_type : syn::Type = content.parse()?;
+        let (out_section, out_type): (proc_macro2::TokenStream, syn::Type) = {
+            let out_type: syn::Type = content.parse()?;
             let ret = format!("
                 out_map.get_mut(&::std::any::TypeId::of::<{}>()).unwrap().push(::std::boxed::Box::new(y)); ::std::any::TypeId::of::<{}>()\n",
                 out_type.to_token_stream(),

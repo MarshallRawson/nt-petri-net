@@ -1,9 +1,9 @@
 use plotmux::plotmuxui::PlotMuxUi;
-use std::env;
 use std::collections::VecDeque;
+use std::env;
 
 fn main() {
-    let mut args : VecDeque<String> = env::args().collect::<VecDeque<String>>();
+    let mut args: VecDeque<String> = env::args().collect::<VecDeque<String>>();
     args.pop_front();
     let graph_png_path = args[0].parse::<String>().expect("GRAPH_PNG arg malformed!");
     args.pop_front();

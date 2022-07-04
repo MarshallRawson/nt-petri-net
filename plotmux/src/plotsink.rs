@@ -1,4 +1,4 @@
-use crate::plotmux::{Color, PlotSender, PlotReceiver, PlotableData, Plotable2d};
+use crate::plotmux::{Color, PlotReceiver, PlotSender, Plotable2d, PlotableData};
 
 pub struct PlotSink {
     name: String,
@@ -7,7 +7,7 @@ pub struct PlotSink {
 }
 impl PlotSink {
     pub fn make(name: String, color: Color, pipe: (PlotSender, PlotReceiver)) -> Self {
-        Self {name, color, pipe}
+        Self { name, color, pipe }
     }
     fn send(&self, d: PlotableData) {
         if self.pipe.0.is_full() {
@@ -21,14 +21,15 @@ impl PlotSink {
         }
         match self.pipe.0.try_send(d) {
             Ok(_) => (),
-            Err(e) =>
-                println!("\x1b[38;2;{};{};{}m[{}]\x1b[0m: \x1b[1;31m[plotmux]: {}\x1b[0m",
+            Err(e) => println!(
+                "\x1b[38;2;{};{};{}m[{}]\x1b[0m: \x1b[1;31m[plotmux]: {}\x1b[0m",
                 self.color.0, self.color.1, self.color.2, self.name, e
             ),
         }
     }
     pub fn println(&self, s: &str) {
-        println!("\x1b[38;2;{};{};{}m[{}]\x1b[0m: {}",
+        println!(
+            "\x1b[38;2;{};{};{}m[{}]\x1b[0m: {}",
             self.color.0, self.color.1, self.color.2, self.name, s
         );
         self.send(s.into());

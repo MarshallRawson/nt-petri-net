@@ -10,7 +10,8 @@ pub struct PlaceMaker {
     pub out_types: Box<dyn Fn() -> HashSet<TypeId> + Send>,
     pub out_types_names: Box<dyn Fn() -> HashSet<String> + Send>,
 }
-#[macro_export] macro_rules! PlaceMaker {
+#[macro_export]
+macro_rules! PlaceMaker {
     ($expression:expr) => {
         PlaceMaker {
             make: $expression,
@@ -22,15 +23,15 @@ pub struct PlaceMaker {
 }
 
 pub trait Place {
-    fn run(&mut self, x: Box<dyn Any + Send>, out_map: &mut HashMap::<TypeId, Edge>) -> TypeId;
+    fn run(&mut self, x: Box<dyn Any + Send>, out_map: &mut HashMap<TypeId, Edge>) -> TypeId;
 }
 
 #[derive(Debug)]
 pub struct Edge {
     _name: String,
     type_name: String,
-    type_id : TypeId,
-    vec : VecDeque<Box<dyn Any + Send>>,
+    type_id: TypeId,
+    vec: VecDeque<Box<dyn Any + Send>>,
 }
 impl Edge {
     pub fn push(&mut self, x: Box<dyn Any + Send>) {

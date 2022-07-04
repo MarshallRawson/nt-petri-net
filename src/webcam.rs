@@ -1,6 +1,6 @@
-use mnet_lib::{Place, PlaceMaker, graph};
-use plotmux::{plotsink::PlotSink, plotmux::PlotMux};
+use mnet_lib::{graph, Place, PlaceMaker};
 use mnet_macro::MnetPlace;
+use plotmux::{plotmux::PlotMux, plotsink::PlotSink};
 use std::thread;
 
 //use rand;
@@ -24,8 +24,8 @@ use std::thread;
 //    }
 //}
 
-use nokhwa::{Camera, CameraFormat, FrameFormat};
 use image::RgbImage;
+use nokhwa::{Camera, CameraFormat, FrameFormat};
 
 #[derive(MnetPlace)]
 #[mnet_place(f, (), RgbImage)]
@@ -39,7 +39,16 @@ impl CameraReader {
         PlaceMaker!(Box::new(move || {
             let width = 1920_u32;
             let height = 1080_u32;
-            let mut cam = Camera::new(0, Some(CameraFormat::new_from(width, height, FrameFormat::MJPEG, 30))).unwrap();
+            let mut cam = Camera::new(
+                0,
+                Some(CameraFormat::new_from(
+                    width,
+                    height,
+                    FrameFormat::MJPEG,
+                    30,
+                )),
+            )
+            .unwrap();
             cam.open_stream().unwrap();
             Box::new(Self {
                 camera: cam,
@@ -54,7 +63,7 @@ impl CameraReader {
     }
 }
 
-use show_image::{ImageView, ImageInfo, create_window, WindowProxy};
+use show_image::{create_window, ImageInfo, ImageView, WindowProxy};
 
 #[derive(MnetPlace)]
 #[mnet_place(f, RgbImage, ())]
@@ -65,17 +74,21 @@ struct ImagePlotter {
 impl ImagePlotter {
     fn maker(name: String, plotmux: &mut PlotMux) -> PlaceMaker {
         let plotsink = plotmux.add_plot_sink(&name);
-        PlaceMaker!(Box::new(move ||
-            Box::new(Self {
-                window: create_window(&name, Default::default()).unwrap(),
-                p: plotsink,
-            })
-        ))
+        PlaceMaker!(Box::new(move || Box::new(Self {
+            window: create_window(&name, Default::default()).unwrap(),
+            p: plotsink,
+        })))
     }
     fn f(&mut self, image: RgbImage) {
-        self.window.set_image("image",
-            ImageView::new(ImageInfo::rgb8(image.width(), image.height()), image.as_raw())
-        ).unwrap();
+        self.window
+            .set_image(
+                "image",
+                ImageView::new(
+                    ImageInfo::rgb8(image.width(), image.height()),
+                    image.as_raw(),
+                ),
+            )
+            .unwrap();
         self.p.println("plot Image!");
     }
 }
@@ -90,9 +103,11 @@ fn main() {
         .place_to_edge("CameraRead", "Image")
         .add_edge::<RgbImage>("Image")
         .edge_to_place("Image", "PlotImage")
-        .add_place("PlotImage", ImagePlotter::maker("Camera".into(), &mut plotmux))
-        .place_to_edge("PlotImage", "Start")
-    ;
+        .add_place(
+            "PlotImage",
+            ImagePlotter::maker("Camera".into(), &mut plotmux),
+        )
+        .place_to_edge("PlotImage", "Start");
     plotmux.make_ready(&g.png());
     thread::spawn(move || plotmux.spin());
     let e = graph::Runner::from_maker(g).run();
