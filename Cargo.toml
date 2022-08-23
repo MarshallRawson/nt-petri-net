@@ -11,18 +11,19 @@ path = "src/plotmuxui.rs"
 name = "sin"
 path = "src/sin.rs"
 
-[[bin]]
-name = "radio"
-path = "src/radio.rs"
-
-[[bin]]
-name = "webcam"
-path = "src/webcam.rs"
+#[[bin]]
+#name = "radio"
+#path = "src/radio.rs"
+#
+#[[bin]]
+#name = "webcam"
+#path = "src/webcam.rs"
 
 [dependencies]
 
 mnet_lib = { path = "./mnet_lib" }
 mnet_macro = { path = "./mnet_macro" }
+ntpnet_macro = { path = "./ntpnet_macro" }
 plotmux = { path = "./plotmux" }
 
 rand = "0.8.5"

@@ -1479,6 +1479,7 @@ dependencies = [
  "mnet_lib",
  "mnet_macro",
  "nokhwa",
+ "ntpnet_macro",
  "plotmux",
  "rand",
  "show-image",
@@ -1705,6 +1706,15 @@ checksum = "a8903e5a29a317527874d0402f867152a3d21c908bb0b933e416c65e301d4c36"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "ntpnet_macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
