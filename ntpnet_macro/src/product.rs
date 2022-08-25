@@ -1,14 +1,32 @@
 use proc_macro::TokenStream;
-use proc_macro2;
 use quote::quote;
-use quote::ToTokens;
-use syn;
-use syn::parse::{Parse, ParseStream};
-use syn::{Ident, Result, Token, Type};
 
+use crate::common;
 
 pub fn impl_product_macro(ast: &syn::DeriveInput) -> TokenStream {
-    println!("product: {:#?}", ast);
-    let gen = quote! {};
+    let name = &ast.ident;
+    let pack = common::struct_field_names(&ast).iter().fold(quote!{},
+        |acc, field| {
+            quote!{
+                #acc
+                map.insert("#field".to_string(), Box::new(self.#field)).unwrap();
+            }
+        }
+    );
+
+    let field_descriptions = common::field_descriptions_HashSet(&ast);
+
+    let gen = quote! {
+        impl ::ntpnet_lib::product::Product for #name {
+            fn into_map(self: Self,
+            map: &mut ::std::collections::HashMap<String, ::ntpnet_lib::Token>)
+            {
+                #pack
+            }
+            fn edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
+                #field_descriptions
+            }
+        }
+    };
     gen.into()
 }

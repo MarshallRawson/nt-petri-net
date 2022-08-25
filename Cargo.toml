@@ -23,6 +23,7 @@ path = "src/sin.rs"
 
 mnet_lib = { path = "./mnet_lib" }
 mnet_macro = { path = "./mnet_macro" }
+ntpnet_lib = { path = "./ntpnet_lib" }
 ntpnet_macro = { path = "./ntpnet_macro" }
 plotmux = { path = "./plotmux" }
 

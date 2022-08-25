@@ -22,5 +22,5 @@ pub fn transition_derive(input: TokenStream) -> TokenStream {
     crate::transition::impl_transition_macro(&ast)
 }
 
-
+mod common;
 

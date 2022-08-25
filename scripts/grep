@@ -1,0 +1,2 @@
+#!/bin/bash
+grep --exclude-dir=target -Ir $@
