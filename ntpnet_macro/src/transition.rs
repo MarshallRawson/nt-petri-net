@@ -8,6 +8,7 @@ use syn::{Ident, Result, Token, Type};
 use proc_macro2::Delimiter::Parenthesis;
 
 pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
+    /*
     println!("transition Fire: {:#?}", 
         ast.attrs.iter()
             .filter(|a| a.path.segments[0].ident == "ntpnet_transitions")
@@ -15,9 +16,13 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
         //.collect::<Vec<_>>()[0].iter()
         //    .filter(|g| g.delimiter == Parenthesis)
         .collect::<Vec<_>>()
-    );
+    );*/
     let gen = quote! {};
     gen.into()
+}
+
+pub fn get_attr(ast: &syn::DeriveInput) -> TokenStream {
+    
 }
 
 
