@@ -83,7 +83,6 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
             quote!{<#enum_first as ::ntpnet_lib::product::Product>::out_edges() }
         }
     };
-    println!("{}", out_edges.to_string());
     let gen = quote! {
         #interface_enums
         impl ::ntpnet_lib::transition::Transition for #name {
@@ -96,10 +95,12 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
             fn transitions(&self) -> Vec<::ntpnet_lib::transition::TransitionCase> {
                 vec![]
             }
-            fn call(&self, map: &mut ::std::collections::HashMap<String, ::ntpnet_lib::Token>) -> u64 {
-                0
+            fn call(&mut self, map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId),
+                    ::ntpnet_lib::Token>) ->
+                ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet_lib::Token>
+            {
+                ::std::collections::HashMap::from([])
             }
-
         }
     };
     gen.into()
