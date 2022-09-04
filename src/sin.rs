@@ -34,21 +34,20 @@
 ///////////////////////////////
 
 //use ntpnet_lib::{ntpnet, Transition};
-//use ntpnet_macro;
+use ntpnet_macro;
 use ntpnet_lib;
 
 mod sin {
     #[derive(ntpnet_macro::Fire)]
-    struct X { x: f64 }
     #[derive(ntpnet_macro::Product)]
-    struct Success { sin: f64 }
+    struct Rad { rad: f64 }
+    #[derive(ntpnet_macro::Fire)]
     #[derive(ntpnet_macro::Product)]
-    struct Nan { nan: f64 }
+    struct Deg { deg: f64 }
     #[derive(ntpnet_macro::Transition)]
-    #[ntpnet_in_edges(x,)]
-    #[ntpnet_out_edges(sin, nan)]
-    //#[ntpnet_transitions(f: Fire(X) -> Product(Success, Nan),)]
-    struct Sin {
+    #[ntpnet_transition(rad: FireRad(Rad) -> ProductRad(Rad))]
+    #[ntpnet_transition(deg: FireDeg(Deg) -> ProductDeg(Deg))]
+    pub struct Sin {
         //p: PlotSink,
     }
     //impl Sin {
@@ -67,5 +66,6 @@ mod sin {
 
 fn main() {
     println!("hello world!");
+    sin::Sin{};
 }
 
