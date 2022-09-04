@@ -5,5 +5,5 @@ use crate::Token;
 
 pub trait Fire {
     fn from_map(map: &mut HashMap<String, Token>) -> Self;
-    fn edges() -> HashSet<(String, TypeId)>;
+    fn in_edges() -> HashSet<(String, TypeId)>;
 }

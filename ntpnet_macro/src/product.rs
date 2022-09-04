@@ -14,7 +14,7 @@ pub fn impl_product_macro(ast: &syn::DeriveInput) -> TokenStream {
         }
     );
 
-    let field_descriptions = common::field_descriptions_HashSet(&ast);
+    let field_descriptions = common::field_descriptions_hash_set(&ast);
 
     let gen = quote! {
         impl ::ntpnet_lib::product::Product for #name {
@@ -23,7 +23,7 @@ pub fn impl_product_macro(ast: &syn::DeriveInput) -> TokenStream {
             {
                 #pack
             }
-            fn edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
+            fn out_edges() -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
                 #field_descriptions
             }
         }

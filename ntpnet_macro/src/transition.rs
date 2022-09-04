@@ -1,189 +1,140 @@
 use proc_macro::TokenStream;
-use proc_macro2;
+use proc_macro2::{Ident, TokenTree, Delimiter};
+use proc_macro2::TokenTree::{Group};
 use quote::quote;
 use quote::ToTokens;
-use syn;
-use syn::parse::{Parse, ParseStream};
-use syn::{Ident, Result, Token, Type};
-use proc_macro2::Delimiter::Parenthesis;
+use std::collections::HashSet;
 
 pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
-    /*
-    println!("transition Fire: {:#?}", 
-        ast.attrs.iter()
-            .filter(|a| a.path.segments[0].ident == "ntpnet_transitions")
-            .map(|a| a.tokens.clone())
-        //.collect::<Vec<_>>()[0].iter()
-        //    .filter(|g| g.delimiter == Parenthesis)
-        .collect::<Vec<_>>()
-    );*/
-    let gen = quote! {};
-    gen.into()
-}
-
-pub fn get_attr(ast: &syn::DeriveInput) -> TokenStream {
-    
-}
-
-
-/*
-fn impl_mnet_place_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
-    let PlaceParams {
-        function,
-        in_type,
-        mut out_types,
-        mut out_section,
-    } = {
-        let attribute = ast
-            .attrs
-            .iter()
-            .filter(|a| a.path.segments.len() == 1 && a.path.segments[0].ident == "mnet_place")
-            .nth(0)
-            .expect("mnet_place is required by MnetPlace");
-        syn::parse2(attribute.tokens.clone()).expect("Invalid mnet_place attribute!")
-    };
-    let place_enum: Option<PlaceEnumParams> = match ast
-        .attrs
-        .iter()
-        .filter(|a| a.path.segments.len() == 1 && a.path.segments[0].ident == "mnet_place_enum")
-        .nth(0)
-    {
-        Some(attribute) => {
-            Some(syn::parse2(attribute.tokens.clone()).expect("Invalid mnet_place attribute!"))
-        }
-        None => None,
-    };
-    if let Some(enum_params) = place_enum {
-        out_section = enum_params.out_section;
-        out_types = enum_params.out_types;
+    //#[derive(Debug)]
+    struct TransitionCallback {
+        name: Ident,
+        fire: (Ident, Vec<Ident>),
+        product: (Ident, Vec<Ident>),
     }
-    let out_type_block: proc_macro2::TokenStream = {
-        let mut out_type_block = "::std::collections::HashSet::from([\n".to_string();
-        for t in &out_types {
-            out_type_block += &format!("::std::any::TypeId::of::<{}>(),\n", t.to_token_stream());
-        }
-        out_type_block += "])";
-        //println!("{}", out_type_block);
-        out_type_block.parse().unwrap()
-    };
-    let out_type_block_names: proc_macro2::TokenStream = {
-        let mut out_type_block_names = "::std::collections::HashSet::from([\n".to_string();
-        for t in &out_types {
-            out_type_block_names += &format!(
-                "::std::any::type_name::<{}>().into(),\n",
-                t.to_token_stream()
+    let token_callbacks = get_attr(ast, "ntpnet_transition").iter().map(|ts| {
+            let mut vt = ts.clone().into_iter().collect::<Vec<_>>();
+            let name = match vt.remove(0) {
+                TokenTree::Ident(i) => i,
+                _ => unimplemented!(),
+            };
+            match vt.remove(0) {
+                TokenTree::Punct(p) => assert!(p.as_char() == ':'),
+                _ => unimplemented!(),
+            }
+            let fire = pop_interface(&mut vt);
+            match vt.remove(0) {
+                TokenTree::Punct(p) => assert!(p.as_char() == '-'),
+                _ => unimplemented!(),
+            }
+            match vt.remove(0) {
+                TokenTree::Punct(p) => assert!(p.as_char() == '>'),
+                _ => unimplemented!(),
+            };
+            let product = pop_interface(&mut vt);
+            TransitionCallback {
+                name: name,
+                fire: fire,
+                product: product,
+            }
+        }).collect::<Vec<TransitionCallback>>();
+    let interface_enums = token_callbacks.iter().fold(vec![], |mut acc, tc| {
+            acc.push(tc.fire.clone());
+            acc.push(tc.product.clone());
+            acc
+        }).iter().fold(quote!{}, |acc, (name, enums)| {
+            let enum_fields = enums.iter().fold(quote!{}, |acc, e| quote!{#acc #e(#e),});
+            quote!{#acc enum #name {#enum_fields}}
+        });
+    let in_edges = token_callbacks.iter().fold(HashSet::new(), |mut acc, tc| {
+            for e in &tc.fire.1 {
+                acc.insert(e.clone());
+            }
+            acc
+        }).into_iter().collect::<Vec<_>>();
+    let in_edges = {
+        let enum_first = &in_edges[0];
+        if in_edges.len() > 1 {
+            let in_edges = in_edges[1..].iter().fold(
+                quote!{<#enum_first as ::ntpnet_lib::fire::Fire>::in_edges() },
+                |acc, e| quote!{#acc .union(&<#e as ::ntpnet_lib::fire::Fire>::in_edges())}
             );
+            quote!{ #in_edges.cloned().collect() }
+        } else {
+            quote!{<#enum_first as ::ntpnet_lib::fire::Fire>::in_edges() }
         }
-        out_type_block_names += "])";
-        //println!("{}", out_type_block_names);
-        out_type_block_names.parse().unwrap()
     };
+    let out_edges = token_callbacks.iter().fold(HashSet::new(), |mut acc, tc| {
+            for e in &tc.product.1 {
+                acc.insert(e.clone());
+            }
+            acc
+        }).into_iter().collect::<Vec<_>>();
+    let out_edges = {
+        let enum_first = &out_edges[0];
+        if out_edges.len() > 1 {
+            let out_edges = out_edges[1..].iter().fold(
+                quote!{<#enum_first as ::ntpnet_lib::product::Product>::out_edges() },
+                |acc, e| quote!{#acc .union(&<#e as ::ntpnet_lib::product::Product>::out_edges())}
+            );
+            quote!{ #out_edges.cloned().collect() }
+        } else {
+            quote!{<#enum_first as ::ntpnet_lib::product::Product>::out_edges() }
+        }
+    };
+    println!("{}", out_edges.to_string());
     let gen = quote! {
-        impl #name {
-            fn in_type() -> ::std::any::TypeId {
-                ::std::any::TypeId::of::<#in_type>()
+        #interface_enums
+        impl ::ntpnet_lib::transition::Transition for #name {
+            fn in_edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
+                #in_edges
             }
-            fn out_types() -> ::std::collections::HashSet<::std::any::TypeId> {
-                #out_type_block
+            fn out_edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
+                #out_edges
             }
-            fn out_types_names() -> ::std::collections::HashSet<::std::string::String> {
-                #out_type_block_names
+            fn transitions(&self) -> Vec<::ntpnet_lib::transition::TransitionCase> {
+                vec![]
             }
-        }
-        impl Place for #name {
-            fn run(
-                &mut self,
-                x: Box<dyn ::std::any::Any + ::std::marker::Send>,
-                out_map: &mut ::std::collections::HashMap::<
-                    ::std::any::TypeId,
-                    mnet_lib::Edge
-                >
-            ) -> ::std::any::TypeId {
-                let y = self.#function(*x.downcast::<#in_type>().unwrap());
-                #out_section
+            fn call(&self, map: &mut ::std::collections::HashMap<String, ::ntpnet_lib::Token>) -> u64 {
+                0
             }
+
         }
     };
-    //println!("{}", gen);
     gen.into()
 }
 
-struct PlaceEnumParams {
-    out_types: Vec<Type>,
-    out_section: proc_macro2::TokenStream,
-}
-impl Parse for PlaceEnumParams {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let content;
-        syn::parenthesized!(content in input);
-        let (out_variants, out_types): (Vec<syn::Type>, Vec<syn::Type>) = {
-            let mut out_types = vec![];
-            let mut out_variants = vec![];
-            while let Ok(variant) = content.parse() {
-                out_variants.push(variant);
-                content.parse::<Token![,]>()?;
-                out_types.push(content.parse()?);
-                if let Err(_) = content.parse::<Token![,]>() {
-                    break;
+fn pop_interface(vt: &mut Vec<TokenTree>) -> (Ident, Vec<Ident>) {
+    let name = match vt.remove(0) {
+        TokenTree::Ident(i) => i,
+        _ => unimplemented!(),
+    };
+    let enums = match vt.remove(0) {
+        TokenTree::Group(g) => {
+            assert!(g.delimiter() == Delimiter::Parenthesis);
+            g.stream().into_iter().filter_map(|t| {
+                match t {
+                    TokenTree::Ident(i) => Some(i),
+                    _ => None,
                 }
-            }
-            (out_variants, out_types)
-        };
-        let out_section: proc_macro2::TokenStream = {
-            let mut ret = "match y {\n".to_string();
-            for v in out_variants {
-                ret += &format!(
-                    "{}(y) => {{
-                        let y : Box<dyn ::std::any::Any + ::std::marker::Send> = ::std::boxed::Box::new(y);
-                        let out_type = (&*y).type_id();
-                        out_map.get_mut(&out_type).unwrap().push(y);
-                        out_type
-                    }},\n",
-                    v.to_token_stream(),
-                );
-            }
-            ret += "}";
-            //println!("{}", ret);
-            ret.parse().unwrap()
-        };
-        Ok(PlaceEnumParams {
-            out_types: out_types,
-            out_section: out_section,
-        })
-    }
+            }).collect::<Vec<Ident>>()
+        },
+        _ => unimplemented!(),
+    };
+    (name, enums)
 }
 
-struct PlaceParams {
-    function: Ident,
-    in_type: Type,
-    out_types: Vec<Type>,
-    out_section: proc_macro2::TokenStream,
+fn get_attr(ast: &syn::DeriveInput, attr: &str) -> Vec<proc_macro2::TokenStream> {
+    ast.attrs
+        .iter()
+        .filter(|a| a.path.segments[0].ident == attr)
+        .map(|a| a.tokens.clone())
+        .fold(quote!{}, |acc, x| quote!{#acc #x,})
+        .into_iter().filter_map(|g| {
+            match g {
+                Group(g) => Some(g.stream().into()),
+                _ => None,
+            }
+        }).collect::<Vec<_>>()
 }
-impl Parse for PlaceParams {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let content;
-        syn::parenthesized!(content in input);
-        let function = content.parse()?;
-        content.parse::<Token![,]>()?;
-        let in_type = content.parse()?;
-        content.parse::<Token![,]>()?;
-        let (out_section, out_type): (proc_macro2::TokenStream, syn::Type) = {
-            let out_type: syn::Type = content.parse()?;
-            let ret = format!("
-                out_map.get_mut(&::std::any::TypeId::of::<{}>()).unwrap().push(::std::boxed::Box::new(y)); ::std::any::TypeId::of::<{}>()\n",
-                out_type.to_token_stream(),
-                out_type.to_token_stream(),
-            ).to_string();
-            //println!("{}", ret);
-            (ret.parse().unwrap(), out_type)
-        };
-        Ok(PlaceParams {
-            function: function,
-            in_type: in_type,
-            out_types: vec![out_type],
-            out_section: out_section,
-        })
-    }
-}
-*/

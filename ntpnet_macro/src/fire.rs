@@ -16,7 +16,7 @@ pub fn impl_fire_macro(ast: &syn::DeriveInput) -> TokenStream {
         }
     );
 
-    let field_descriptions = common::field_descriptions_HashSet(&ast);
+    let field_descriptions = common::field_descriptions_hash_set(&ast);
 
     let gen = quote! {
         impl ::ntpnet_lib::fire::Fire for #name {
@@ -27,7 +27,7 @@ pub fn impl_fire_macro(ast: &syn::DeriveInput) -> TokenStream {
                     #unpack
                 }
             }
-            fn edges() -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
+            fn in_edges() -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
                 #field_descriptions
             }
         }

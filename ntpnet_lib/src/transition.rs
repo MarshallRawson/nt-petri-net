@@ -3,16 +3,16 @@ use std::any::TypeId;
 
 use crate::Token;
 
-pub struct FireToProduct {
-    input_condition: HashSet<(String, TypeId)>,
+pub struct TransitionCase {
+    input_conditions: Vec<HashSet<(String, TypeId)>>,
     callback: String,
-    products: HashSet<(String, TypeId)>,
+    products: Vec<HashSet<(String, TypeId)>>,
 }
 pub trait Transition {
-    fn in_edges() -> HashSet<String>;
-    fn out_edges() -> HashSet<String>;
-    fn fire_to_product() -> Vec<FireToProduct>;
-    fn call(map: &mut HashMap<String, Token>) -> String;
+    fn in_edges(&self) -> HashSet<(String, TypeId)>;
+    fn out_edges(&self) -> HashSet<(String, TypeId)>;
+    fn transitions(&self) -> Vec<TransitionCase>;
+    fn call(&self, map: &mut HashMap<String, Token>) -> u64;
 }
 
 

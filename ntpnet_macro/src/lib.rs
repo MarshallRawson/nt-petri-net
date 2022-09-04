@@ -16,7 +16,7 @@ pub fn product_derive(input: TokenStream) -> TokenStream {
 }
 
 mod transition;
-#[proc_macro_derive(Transition, attributes(ntpnet_in_edges, ntpnet_out_edges, ntpnet_transitions))]
+#[proc_macro_derive(Transition, attributes(ntpnet_transition))]
 pub fn transition_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     crate::transition::impl_transition_macro(&ast)

@@ -5,5 +5,5 @@ use crate::Token;
 
 pub trait Product {
     fn into_map(self: Self, map: &mut HashMap::<String, Token>);
-    fn edges(&self) -> HashSet<(String, TypeId)>;
+    fn out_edges() -> HashSet<(String, TypeId)>;
 }

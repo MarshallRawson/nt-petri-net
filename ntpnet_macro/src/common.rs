@@ -1,5 +1,4 @@
 use syn::{Ident, FieldsNamed, Type};
-use syn::token::Colon;
 use quote::quote;
 use proc_macro2::TokenStream;
 
@@ -30,7 +29,7 @@ fn struct_field_names_types(ast: &syn::DeriveInput) -> Vec<(Ident, Type)> {
     }
 }
 
-pub fn field_descriptions_HashSet(ast: &syn::DeriveInput) -> TokenStream {
+pub fn field_descriptions_hash_set(ast: &syn::DeriveInput) -> TokenStream {
     let field_descriptions = struct_field_names_types(&ast).iter().fold(quote!{},
         |acc, (field, ty)| {
             quote!{
