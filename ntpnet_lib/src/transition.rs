@@ -12,7 +12,7 @@ pub trait Transition {
     fn in_edges(&self) -> HashSet<(String, TypeId)>;
     fn out_edges(&self) -> HashSet<(String, TypeId)>;
     fn transitions(&self) -> Vec<TransitionCase>;
-    fn call(&self, map: &mut HashMap<String, Token>) -> u64;
+    fn call(&mut self, in_map: &mut HashMap<(String, TypeId), Token>) -> HashMap<(String, TypeId), Token>;
 }
 
 
