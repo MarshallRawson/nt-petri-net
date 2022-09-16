@@ -1,2 +1,2 @@
 #!/bin/bash
-grep --exclude-dir=target -Ir $@
+grep --exclude-dir=target --exclude-dir=.git -Ir $@

@@ -34,9 +34,8 @@
 ///////////////////////////////
 
 //use ntpnet_lib::{ntpnet, Transition};
-use ntpnet_macro;
-use ntpnet_lib;
-
+//use ntpnet_macro;
+//use ntpnet_lib;
 mod sin {
     #[derive(ntpnet_macro::Fire)]
     #[derive(ntpnet_macro::Product)]
