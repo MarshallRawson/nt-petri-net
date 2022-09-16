@@ -1,70 +1,44 @@
-//use mnet_lib::{graph, Place, PlaceMaker};
-//use mnet_macro::MnetPlace;
-//use plotmux::{plotmux::PlotMux, plotsink::PlotSink};
-//use std::{thread, time};
-//
-//#[derive(MnetPlace)]
-//#[mnet_place(f, f64, f64)]
-//struct Sin {
-//    p: PlotSink,
-//}
-//impl Sin {
-//    fn f(&mut self, t: f64) -> f64 {
-//        self.p.plot_series_2d("sin(t)".into(), t, t.sin());
-//        thread::sleep(time::Duration::from_millis(10));
-//        t + 0.01
-//    }
-//    fn maker(plotsink: PlotSink) -> PlaceMaker {
-//        PlaceMaker!(Box::new(move || Box::new(Sin { p: plotsink })))
-//    }
-//}
-//
-//fn main() {
-//    let mut plotmux = PlotMux::make();
-//    let g = graph::Maker::make()
-//        .set_start_tokens::<f64>("time", vec![0.])
-//        .edge_to_place("time", "sin")
-//        .add_place("sin", Sin::maker(plotmux.add_plot_sink("sin")))
-//        .place_to_edge("sin", "time");
-//    plotmux.make_ready(&g.png());
-//    thread::spawn(move || plotmux.spin());
-//    println!("{:?}", graph::Runner::from_maker(g).run());
-//}
-
-///////////////////////////////
-
-//use ntpnet_lib::{ntpnet, Transition};
-//use ntpnet_macro;
-//use ntpnet_lib;
 mod sin {
+    use plotmux::plotsink::PlotSink;
+    use std::{thread, time};
+    use ntpnet_lib::TransitionMaker;
     #[derive(ntpnet_macro::Fire)]
     #[derive(ntpnet_macro::Product)]
-    struct Rad { rad: f64 }
-    #[derive(ntpnet_macro::Fire)]
-    #[derive(ntpnet_macro::Product)]
-    struct Deg { deg: f64 }
+    pub struct Time { pub t: f64 }
     #[derive(ntpnet_macro::Transition)]
-    #[ntpnet_transition(rad: FireRad(Rad) -> ProductRad(Rad))]
-    #[ntpnet_transition(deg: FireDeg(Deg) -> ProductDeg(Deg))]
+    #[ntpnet_transition(sin: Fire(Time) -> Product(Time))]
     pub struct Sin {
-        //p: PlotSink,
+        p: PlotSink,
     }
     impl Sin {
-        fn rad(&mut self, rad: FireRad) -> ProductRad {
-            match rad {
-                FireRad::Rad(Rad { rad }) => ProductRad::Rad(Rad { rad: rad.sin() }),
-            }
+        pub fn maker(plotsink: PlotSink) -> TransitionMaker {
+            Box::new(move || Box::new(Sin { p: plotsink }))
         }
-        fn deg(&mut self, deg: FireDeg) -> ProductDeg {
-            match deg {
-                FireDeg::Deg(Deg { deg }) => ProductDeg::Deg(Deg { deg: deg.sin() }),
-            }
+        fn sin(&mut self, f: Fire) -> Product {
+            let t = match f {
+                Fire::Time(Time { t }) => t
+            };
+            self.p.plot_series_2d("sin(t)".into(), t, t.sin());
+            thread::sleep(time::Duration::from_millis(10));
+
+            Product::Time(Time { t: t + 0.01 })
         }
     }
 }
 
+use ntpnet_lib::{net};
+use plotmux::plotmux::PlotMux;
+use std::thread;
 fn main() {
-    println!("hello world!");
-    sin::Sin{};
+    let mut plotmux = PlotMux::make();
+    let n = net::Net::make()
+        .set_start_tokens("time", vec![Box::new(sin::Time { t: 0.})])
+        .place_to_transition("time", "t", "sin")
+        .add_transition("sin", sin::Sin::maker(plotmux.add_plot_sink("sin")))
+        .transition_to_place("sin", "t", "time")
+    ;
+    plotmux.make_ready(&n.png());
+    thread::spawn(move || plotmux.spin());
+    //println!("{:?}", graph::Runner::from_maker(g).run());
 }
 
