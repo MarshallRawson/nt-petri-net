@@ -98,7 +98,7 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
             let products = quote!{vec![#products]};
             let name_str = tc.name.to_string();
             quote!{#acc
-                (#name_str.into(), ::ntpnet_lib::transition::TransitionCase {
+                (#name_str.into(), ::ntpnet_lib::transition::Case {
                     conditions: #conditions,
                     products: #products,
                 }),
@@ -141,9 +141,9 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         #interface_enums
         impl ::ntpnet_lib::transition::Transition for #name {
-            fn descr(&self) -> ::ntpnet_lib::transition::TransitionDescr
+            fn description(&self) -> ::ntpnet_lib::transition::Description
             {
-                ::ntpnet_lib::transition::TransitionDescr {
+                ::ntpnet_lib::transition::Description {
                     in_edges: #in_edges,
                     out_edges: #out_edges,
                     cases: #cases

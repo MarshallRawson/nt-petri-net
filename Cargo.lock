@@ -949,9 +949,9 @@ dependencies = [
 
 [[package]]
 name = "generic-array"
-version = "0.14.5"
+version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd48d33ec7f05fbfa152300fdad764757cbded343c1aa1cff2fbaf4134851803"
+checksum = "bff49e947297f3312447abdca79f45f4738097cc82b06e72054d2223f601f1b9"
 dependencies = [
  "typenum",
  "version_check",
@@ -1472,21 +1472,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mnet"
-version = "0.1.0"
-dependencies = [
- "image 0.24.2",
- "mnet_lib",
- "mnet_macro",
- "nokhwa",
- "ntpnet_lib",
- "ntpnet_macro",
- "plotmux",
- "rand",
- "show-image",
-]
-
-[[package]]
 name = "mnet_lib"
 version = "0.1.0"
 dependencies = [
@@ -1710,8 +1695,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "nt-petri-net"
+version = "0.1.0"
+dependencies = [
+ "image 0.24.2",
+ "mnet_lib",
+ "mnet_macro",
+ "nokhwa",
+ "ntpnet_lib",
+ "ntpnet_macro",
+ "plotmux",
+ "rand",
+ "show-image",
+]
+
+[[package]]
 name = "ntpnet_lib"
 version = "0.1.0"
+dependencies = [
+ "itertools",
+ "tempfile",
+]
 
 [[package]]
 name = "ntpnet_macro"
