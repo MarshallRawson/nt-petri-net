@@ -3,16 +3,21 @@ use std::any::TypeId;
 
 use crate::Token;
 
+pub struct TransitionDescr {
+    in_edges: HashSet<(String, TypeId)>,
+    out_edges: HashSet<(String, TypeId)>,
+    cases: HashMap<String, TransitionCase>,
+}
 pub struct TransitionCase {
-    input_conditions: Vec<HashSet<(String, TypeId)>>,
-    callback: String,
+    conditions: Vec<HashSet<(String, TypeId)>>,
     products: Vec<HashSet<(String, TypeId)>>,
 }
+
 pub trait Transition {
-    fn in_edges(&self) -> HashSet<(String, TypeId)>;
-    fn out_edges(&self) -> HashSet<(String, TypeId)>;
-    fn transitions(&self) -> Vec<TransitionCase>;
-    fn call(&mut self, in_map: &mut HashMap<(String, TypeId), Token>) -> HashMap<(String, TypeId), Token>;
+    fn descr(&self) -> TransitionDescr;
+    fn call(&mut self, case: &String, condition: usize,
+            in_map: &mut HashMap<(String, TypeId), Token>)
+        -> (usize, HashMap<(String, TypeId), Token>);
 }
 
 

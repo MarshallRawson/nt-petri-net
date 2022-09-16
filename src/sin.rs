@@ -50,18 +50,18 @@ mod sin {
     pub struct Sin {
         //p: PlotSink,
     }
-    //impl Sin {
-    //    fn f(&mut self, x: Fire) -> Product {
-    //        // extract value(s) from the fire conditions
-    //        let x = match x { Fire::X(x) => { x.x } };
-    //        let sin = x.sin();
-    //        // pack value(s) back into one of a given product
-    //        match sin {
-    //            std::f64::NAN => Product::Nan(Nan{nan: std::f64::NAN}),
-    //            _ => Product::Success(Success{sin}),
-    //        }
-    //    }
-    //}
+    impl Sin {
+        fn rad(&mut self, rad: FireRad) -> ProductRad {
+            match rad {
+                FireRad::Rad(Rad { rad }) => ProductRad::Rad(Rad { rad: rad.sin() }),
+            }
+        }
+        fn deg(&mut self, deg: FireDeg) -> ProductDeg {
+            match deg {
+                FireDeg::Deg(Deg { deg }) => ProductDeg::Deg(Deg { deg: deg.sin() }),
+            }
+        }
+    }
 }
 
 fn main() {

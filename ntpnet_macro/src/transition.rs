@@ -86,21 +86,24 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         #interface_enums
         impl ::ntpnet_lib::transition::Transition for #name {
-            fn in_edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
-                #in_edges
+            fn new(self) -> Box<dyn ::ntpnet_lib::transition::Transition> {
+                Box::new(self)
             }
-            fn out_edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
-                #out_edges
-            }
-            fn transitions(&self) -> Vec<::ntpnet_lib::transition::TransitionCase> {
-                vec![]
-            }
-            fn call(&mut self, map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId),
-                    ::ntpnet_lib::Token>) ->
-                ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet_lib::Token>
-            {
-                ::std::collections::HashMap::from([])
-            }
+            //fn in_edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
+            //    #in_edges
+            //}
+            //fn out_edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
+            //    #out_edges
+            //}
+            //fn transitions(&self) -> Vec<::ntpnet_lib::transition::TransitionCase> {
+            //    vec![]
+            //}
+            //fn call(&mut self, map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId),
+            //        ::ntpnet_lib::Token>) ->
+            //    ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet_lib::Token>
+            //{
+            //    ::std::collections::HashMap::from([])
+            //}
         }
     };
     gen.into()
