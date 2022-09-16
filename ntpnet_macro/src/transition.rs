@@ -2,7 +2,6 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, TokenTree, Delimiter};
 use proc_macro2::TokenTree::{Group};
 use quote::quote;
-use quote::ToTokens;
 use std::collections::HashSet;
 
 pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
@@ -83,27 +82,82 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
             quote!{<#enum_first as ::ntpnet_lib::product::Product>::out_edges() }
         }
     };
+    let cases = token_callbacks.iter().fold(quote!{},
+        |acc, tc| {
+            let conditions = tc.fire.1.iter().fold(quote!{},
+                |acc_cond, e| {
+                    quote!{#acc_cond <#e as ::ntpnet_lib::fire::Fire>::in_edges(),}
+                }
+            );
+            let conditions = quote!{vec![#conditions]};
+            let products = tc.product.1.iter().fold(quote!{},
+                |acc_prod, e| {
+                    quote!{#acc_prod <#e as ::ntpnet_lib::product::Product>::out_edges(),}
+                }
+            );
+            let products = quote!{vec![#products]};
+            let name_str = tc.name.to_string();
+            quote!{#acc
+                (#name_str.into(), ::ntpnet_lib::transition::TransitionCase {
+                    conditions: #conditions,
+                    products: #products,
+                }),
+            }
+        }
+    );
+    let cases = quote!{::std::collections::HashMap::from([#cases])};
+    let callbacks = token_callbacks.iter().fold(quote!{},
+        |acc, tc| {
+            let fire = &tc.fire.0;
+            let fire_conditions = tc.fire.1.iter().enumerate().fold(quote!{},
+                |acc_fire, (i, f)| {
+                    quote!{#acc_fire #i => #fire::#f(<#f as ::ntpnet_lib::fire::Fire>::from_map(in_map)),}
+                }
+            );
+            let product = &tc.product.0;
+            let product_outcomes = tc.product.1.iter().enumerate().fold(quote!{},
+                |acc_product, (i, p)| {
+                    quote!{#acc_product #product::#p(p) => {
+                        ::ntpnet_lib::product::Product::into_map(p, out_map);
+                        #i
+                    }}
+                }
+            );
+            let name_str = tc.name.to_string();
+            let name = &tc.name;
+            quote!{#acc
+                #name_str => {
+                    let product = self.#name( match condition {
+                        #fire_conditions
+                        _ => unimplemented!(),
+                    });
+                    match product {
+                        #product_outcomes
+                    }
+                },
+            }
+        }
+    );
     let gen = quote! {
         #interface_enums
         impl ::ntpnet_lib::transition::Transition for #name {
-            fn new(self) -> Box<dyn ::ntpnet_lib::transition::Transition> {
-                Box::new(self)
+            fn descr(&self) -> ::ntpnet_lib::transition::TransitionDescr
+            {
+                ::ntpnet_lib::transition::TransitionDescr {
+                    in_edges: #in_edges,
+                    out_edges: #out_edges,
+                    cases: #cases
+                }
             }
-            //fn in_edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
-            //    #in_edges
-            //}
-            //fn out_edges(&self) -> ::std::collections::HashSet<(String, ::std::any::TypeId)> {
-            //    #out_edges
-            //}
-            //fn transitions(&self) -> Vec<::ntpnet_lib::transition::TransitionCase> {
-            //    vec![]
-            //}
-            //fn call(&mut self, map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId),
-            //        ::ntpnet_lib::Token>) ->
-            //    ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet_lib::Token>
-            //{
-            //    ::std::collections::HashMap::from([])
-            //}
+            fn call(&mut self, case: &str, condition: usize,
+                in_map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet_lib::Token>,
+                out_map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet_lib::Token>,
+            ) -> usize {
+                match case {
+                    #callbacks
+                    _ => unimplemented!(),
+                }
+            }
         }
     };
     gen.into()
