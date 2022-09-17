@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 itertools = "0.10.3"
 tempfile = "3.3.0"
+bimap = "0.6.2"

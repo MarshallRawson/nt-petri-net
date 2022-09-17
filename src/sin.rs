@@ -26,19 +26,22 @@ mod sin {
     }
 }
 
-use ntpnet_lib::{net::Net, reactor::Reactor};
+use ntpnet_lib::{net::Net, reactor::Reactor, Token};
 use plotmux::plotmux::PlotMux;
 use std::thread;
+use std::any::{Any, TypeId};
+
 fn main() {
     let mut plotmux = PlotMux::make();
+    println!("TypeId::of::<f64>(): {:?}", TypeId::of::<f64>());
     let n = Net::make()
-        .set_start_tokens("time", vec![Box::new(sin::Time { t: 0.})])
+        .set_start_tokens("time", vec![Box::new(0.)])
         .place_to_transition("time", "t", "sin")
         .add_transition("sin", sin::Sin::maker(plotmux.add_plot_sink("sin")))
         .transition_to_place("sin", "t", "time")
     ;
-    plotmux.make_ready(&n.png());
-    thread::spawn(move || plotmux.spin());
+    //plotmux.make_ready(&n.png());
+    //thread::spawn(move || plotmux.spin());
     Reactor::make(n).run();
 }
 
