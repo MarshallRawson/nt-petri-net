@@ -11,10 +11,10 @@ use std::io::Write;
 use crate::{TransitionMaker, Token};
 
 pub struct Net {
-    transitions: HashMap<String, TransitionMaker>,
-    places: HashMap<String, VecDeque<Token>>,
-    transitions_to_places: HashMap<String, HashSet<(String, String)>>,
-    places_to_transitions: HashMap<String, HashSet<(String, String)>>,
+    pub transitions: HashMap<String, TransitionMaker>,
+    pub places: HashMap<String, VecDeque<Token>>,
+    pub transitions_to_places: HashMap<String, HashSet<(String, String)>>,
+    pub places_to_transitions: HashMap<String, HashSet<(String, String)>>,
 }
 impl Net {
     pub fn make() -> Self {
