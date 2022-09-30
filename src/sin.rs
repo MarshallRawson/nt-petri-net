@@ -4,8 +4,8 @@ mod sin {
     use std::{thread, time};
     #[derive(ntpnet_macro::TransitionInputTokens)]
     #[derive(ntpnet_macro::TransitionOutputTokens)]
-    pub struct Time {
-        pub t: f64,
+    struct Time {
+        t: f64,
     }
     #[derive(ntpnet_macro::Transition)]
     #[ntpnet_transition(sin: Input(Time) -> Output(Time))]
