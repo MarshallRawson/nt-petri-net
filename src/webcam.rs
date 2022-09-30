@@ -4,12 +4,12 @@ mod camera_reader {
     use nokhwa::{Camera, CameraFormat, FrameFormat};
     use ntpnet_lib::TransitionMaker;
     #[derive(ntpnet_macro::TransitionInputTokens)]
-    pub struct E {
-        pub enable: (),
+    struct E {
+        enable: (),
     }
     #[derive(ntpnet_macro::TransitionOutputTokens)]
-    pub struct Image {
-        pub image: RgbImage,
+    struct Image {
+        image: RgbImage,
     }
     #[derive(ntpnet_macro::Transition)]
     #[ntpnet_transition(read: Input(E) -> Output(Image))]
@@ -18,10 +18,8 @@ mod camera_reader {
         p: PlotSink,
     }
     impl CameraReader {
-        pub fn maker(plotsink: PlotSink) -> TransitionMaker {
+        pub fn maker(width: u32, height: u32, plotsink: PlotSink) -> TransitionMaker {
             Box::new(move || {
-                let width = 1920_u32;
-                let height = 1080_u32;
                 let mut cam = Camera::new(
                     0,
                     Some(CameraFormat::new_from(
@@ -39,65 +37,77 @@ mod camera_reader {
                 })
             })
         }
-        pub fn read(&mut self, _: Input) -> Output {
+        fn read(&mut self, _: Input) -> Output {
             let frame = self.camera.frame().unwrap();
             self.p.println("got Image!");
-            Output::Image(Image { RgbImage::from_vec(frame.width(), frame.height(), frame.into_vec()).unwrap() })
+            Output::Image(Image { image: RgbImage::from_vec(frame.width(), frame.height(), frame.into_vec()).unwrap() })
         }
     }
 }
 
+mod image_consumer {
+    use image::RgbImage;
+    use plotmux::plotsink::PlotSink;
+    use nokhwa::{Camera, CameraFormat, FrameFormat};
+    use ntpnet_lib::TransitionMaker;
+    #[derive(ntpnet_macro::TransitionOutputTokens)]
+    struct Out {
+        out: (),
+    }
+    #[derive(ntpnet_macro::TransitionInputTokens)]
+    struct Image {
+        image: RgbImage,
+    }
+    #[derive(ntpnet_macro::Transition)]
+    #[ntpnet_transition(consume: Input(Image) -> Output(Out))]
+    pub struct ImageConsumer {
+        p: PlotSink,
+    }
+    impl ImageConsumer {
+        pub fn maker(plotsink: PlotSink) -> TransitionMaker {
+            Box::new(move || Box::new(Self { p: plotsink, }))
+        }
+        fn consume(&mut self, _: Input) -> Output {
+            Output::Out(Out { out: () })
+        }
+    }
+}
+
+use ntpnet_lib::{net::Net, reactor::Reactor, Token};
+use plotmux::plotmux::PlotMux;
+use std::any::{Any, TypeId};
 use std::thread;
 
-
-
-use show_image::{create_window, ImageInfo, ImageView, WindowProxy};
-
-#[derive(MnetPlace)]
-#[mnet_place(f, RgbImage, ())]
-struct ImagePlotter {
-    window: WindowProxy,
-    p: PlotSink,
-}
-impl ImagePlotter {
-    fn maker(name: String, plotmux: &mut PlotMux) -> PlaceMaker {
-        let plotsink = plotmux.add_plot_sink(&name);
-        PlaceMaker!(Box::new(move || Box::new(Self {
-            window: create_window(&name, Default::default()).unwrap(),
-            p: plotsink,
-        })))
-    }
-    fn f(&mut self, image: RgbImage) {
-        self.window
-            .set_image(
-                "image",
-                ImageView::new(
-                    ImageInfo::rgb8(image.width(), image.height()),
-                    image.as_raw(),
-                ),
-            )
-            .unwrap();
-        self.p.println("plot Image!");
-    }
+use clap::Parser;
+#[derive(Parser)]
+#[command(author, version, about, long_about = None, disable_help_flag = true)]
+struct Args {
+   #[arg(short, long)]
+   width: u32,
+   #[arg(short, long)]
+   height: u32,
 }
 
-#[show_image::main]
 fn main() {
+    let args = Args::parse();
+
     let mut plotmux = PlotMux::make();
-    let g = graph::Maker::make()
-        .set_start_tokens::<()>("Start", vec![()])
-        .edge_to_place("Start", "CameraRead")
-        .add_place("CameraRead", CameraReader::maker(&mut plotmux))
-        .place_to_edge("CameraRead", "Image")
-        .add_edge::<RgbImage>("Image")
-        .edge_to_place("Image", "PlotImage")
-        .add_place(
-            "PlotImage",
-            ImagePlotter::maker("Camera".into(), &mut plotmux),
-        )
-        .place_to_edge("PlotImage", "Start");
-    plotmux.make_ready(&g.png());
+    let n = Net::make()
+        .set_start_tokens("E", vec![Box::new(())])
+        .place_to_transition("E", "enable", "camera_reader")
+        .add_transition("camera_reader",
+            camera_reader::CameraReader::maker(
+                args.width, args.height,
+                plotmux.add_plot_sink("camera_reader"))
+            )
+        .add_transition("image_consumer",
+            image_consumer::ImageConsumer::maker(plotmux.add_plot_sink("image_consumer")))
+        .transition_to_place("camera_reader", "image", "Image")
+        .place_to_transition("Image", "image", "image_consumer")
+        .transition_to_place("image_consumer", "out", "E")
+    ;
+    println!("places {:#?}", n.places);
+    plotmux.make_ready(&n.png());
     thread::spawn(move || plotmux.spin());
-    let e = graph::Runner::from_maker(g).run();
-    println!("{:#?}", e);
+    Reactor::make(n).run();
 }

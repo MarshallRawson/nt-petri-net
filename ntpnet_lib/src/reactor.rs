@@ -51,6 +51,7 @@ impl State {
     fn push(&mut self, p_ty: &(String, TypeId), t: Token) {
         if !self.places[&p_ty.0].contains_key(&p_ty.1) {
             self.places.get_mut(&p_ty.0).unwrap().insert(p_ty.1.clone(), VecDeque::new());
+            self.state.insert(p_ty.clone(), 0);
         }
         self.places.get_mut(&p_ty.0).unwrap().get_mut(&p_ty.1).unwrap().push_back(t);
         *self.state.get_mut(p_ty).unwrap() += 1;

@@ -64,6 +64,7 @@ impl Net {
         if let Some(s) = self.place_to_transitions.get_mut(&place.to_string()) {
             s.insert(transition.into());
         } else {
+            self.places.insert(place.into(), HashMap::new());
             self.place_to_transitions.insert(place.into(), HashSet::new());
             self.place_to_transitions
                 .get_mut(&place.to_string())
@@ -77,6 +78,7 @@ impl Net {
         if let Some(s) = self.transition_to_places.get_mut(&transition.to_string()) {
                 s.insert(place.into());
         } else {
+            self.places.insert(place.into(), HashMap::new());
             self.transition_to_places.insert(transition.into(), HashSet::new());
             self.transition_to_places
                 .get_mut(&transition.to_string())
