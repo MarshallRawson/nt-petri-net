@@ -1,46 +1,55 @@
-use mnet_lib::{graph, Place, PlaceMaker};
-use mnet_macro::MnetPlace;
-use plotmux::{plotmux::PlotMux, plotsink::PlotSink};
+mod camera_reader {
+    use image::RgbImage;
+    use plotmux::plotsink::PlotSink;
+    use nokhwa::{Camera, CameraFormat, FrameFormat};
+    use ntpnet_lib::TransitionMaker;
+    #[derive(ntpnet_macro::TransitionInputTokens)]
+    pub struct E {
+        pub enable: (),
+    }
+    #[derive(ntpnet_macro::TransitionOutputTokens)]
+    pub struct Image {
+        pub image: RgbImage,
+    }
+    #[derive(ntpnet_macro::Transition)]
+    #[ntpnet_transition(read: Input(E) -> Output(Image))]
+    pub struct CameraReader {
+        camera: Camera,
+        p: PlotSink,
+    }
+    impl CameraReader {
+        pub fn maker(plotsink: PlotSink) -> TransitionMaker {
+            Box::new(move || {
+                let width = 1920_u32;
+                let height = 1080_u32;
+                let mut cam = Camera::new(
+                    0,
+                    Some(CameraFormat::new_from(
+                        width,
+                        height,
+                        FrameFormat::MJPEG,
+                        30,
+                    )),
+                )
+                .unwrap();
+                cam.open_stream().unwrap();
+                Box::new(Self {
+                    camera: cam,
+                    p: plotsink,
+                })
+            })
+        }
+        pub fn read(&mut self, _: Input) -> Output {
+            let frame = self.camera.frame().unwrap();
+            self.p.println("got Image!");
+            Output::Image(Image { RgbImage::from_vec(frame.width(), frame.height(), frame.into_vec()).unwrap() })
+        }
+    }
+}
+
 use std::thread;
 
-use image::RgbImage;
-use nokhwa::{Camera, CameraFormat, FrameFormat};
 
-#[derive(MnetPlace)]
-#[mnet_place(f, (), RgbImage)]
-struct CameraReader {
-    camera: Camera,
-    p: PlotSink,
-}
-impl CameraReader {
-    fn maker(plotmux: &mut PlotMux) -> PlaceMaker {
-        let plotsink = plotmux.add_plot_sink("CameraRead");
-        PlaceMaker!(Box::new(move || {
-            let width = 1920_u32;
-            let height = 1080_u32;
-            let mut cam = Camera::new(
-                0,
-                Some(CameraFormat::new_from(
-                    width,
-                    height,
-                    FrameFormat::MJPEG,
-                    30,
-                )),
-            )
-            .unwrap();
-            cam.open_stream().unwrap();
-            Box::new(Self {
-                camera: cam,
-                p: plotsink,
-            })
-        }))
-    }
-    fn f(&mut self, _: ()) -> RgbImage {
-        let frame = self.camera.frame().unwrap();
-        self.p.println("got Image!");
-        RgbImage::from_vec(frame.width(), frame.height(), frame.into_vec()).unwrap()
-    }
-}
 
 use show_image::{create_window, ImageInfo, ImageView, WindowProxy};
 
