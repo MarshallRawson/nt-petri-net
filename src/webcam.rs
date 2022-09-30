@@ -3,27 +3,6 @@ use mnet_macro::MnetPlace;
 use plotmux::{plotmux::PlotMux, plotsink::PlotSink};
 use std::thread;
 
-//use rand;
-//struct Type1;
-//struct Type2;
-//enum Letter {
-//    A(Type1),
-//    B(Type2),
-//}
-//#[derive(MnetPlace)]
-//#[mnet_place(my_enum_function, Letter, Letter)]
-//#[mnet_place_enum(Letter::A, Type1, Letter::B, Type2)]
-//struct MyEnumPlace;
-//impl MyEnumPlace {
-//    fn my_enum_function(&self, _x: Letter) -> Letter {
-//        if rand::prelude::random() {
-//            Letter::A(Type1{})
-//        } else {
-//            Letter::B(Type2{})
-//        }
-//    }
-//}
-
 use image::RgbImage;
 use nokhwa::{Camera, CameraFormat, FrameFormat};
 

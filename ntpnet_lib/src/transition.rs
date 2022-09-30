@@ -11,8 +11,8 @@ pub struct Description {
 }
 #[derive(Debug)]
 pub struct Case {
-    pub conditions: Vec<HashSet<(String, TypeId)>>,
-    pub products: Vec<HashSet<(String, TypeId)>>,
+    pub inputs: Vec<HashSet<(String, TypeId)>>,
+    pub outputs: Vec<HashSet<(String, TypeId)>>,
 }
 
 pub trait Transition {

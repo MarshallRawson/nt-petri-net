@@ -20,29 +20,29 @@ struct State {
     state_exists: HashSet<(String, TypeId)>,
 }
 impl State {
-    fn make(places: HashMap<String, HashMap<TypeId, VecDeque<Token>>>, transitions: &HashMap<String, TransitionRuntime>) -> Self {
+    fn make(mut places: HashMap<String, HashMap<TypeId, VecDeque<Token>>>, transitions: &HashMap<String, TransitionRuntime>) -> Self {
         let state = {
             let mut state = HashMap::new();
             for (place_name, ty_v) in places.iter_mut() {
                 for (ty, v) in ty_v.iter() {
                     state.insert((place_name.clone(), ty.clone()), v.len());
                 }
-                for ty in transitions.iter().fold(HashSet::new(), |acc, (_, t)| {
-                    if let Some(edge_name) = t.in_edge_to_place.get_by_right(place_name) {
-                        acc.union(&t.description.in_edges.iter().filter_map(|(e_name, ty)| {
-                            if e_name == edge_name {
-                                Some(ty.clone())
-                            } else {
-                                None
-                            }
-                        }).collect::<HashSet<_>>()).cloned().collect::<_>()
-                    } else {
-                        acc
-                    }
-                }).into_iter() {
-                    ty_v.insert(ty, VecDeque::new());
-                    state.insert((place_name.clone(), ty.clone()), 0);
-                }
+                //for ty in transitions.iter().fold(HashSet::new(), |acc, (_, t)| {
+                //    if let Some(edge_name) = t.in_edge_to_place.get_by_right(place_name) {
+                //        acc.union(&t.description.in_edges.iter().filter_map(|(e_name, ty)| {
+                //            if e_name == edge_name {
+                //                Some(ty.clone())
+                //            } else {
+                //                None
+                //            }
+                //        }).collect::<HashSet<_>>()).cloned().collect::<_>()
+                //    } else {
+                //        acc
+                //    }
+                //}).into_iter() {
+                //    ty_v.insert(ty, VecDeque::new());
+                //    state.insert((place_name.clone(), ty.clone()), 0);
+                //}
             }
             state
         };
@@ -64,6 +64,13 @@ impl State {
         }
         self.places.get_mut(&p_ty.0).unwrap().get_mut(&p_ty.1).unwrap().pop_front().unwrap()
     }
+    fn push(&mut self, p_ty: &(String, TypeId), t: Token) {
+        self.places.get_mut(&p_ty.0).unwrap().get_mut(&p_ty.1).unwrap().push_back(t);
+        *self.state.get_mut(p_ty).unwrap() += 1;
+        if !self.state_exists.contains(p_ty) {
+            self.state_exists.insert(p_ty.clone());
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -84,7 +91,7 @@ impl WorkCluster {
                     .filter(|((t,_),_)| t == &name)
                     .map(|((_, p), e)| (e.clone(), p.clone())).collect::<BiMap<String, String>>();
                 for (_, case) in d.cases.iter_mut() {
-                    for condition in case.conditions.iter_mut() {
+                    for condition in case.inputs.iter_mut() {
                         *condition = condition.iter().map(|(edge, ty)| {
                             (
                                 in_edge_to_place.get_by_left(edge).unwrap().clone(),
@@ -92,7 +99,7 @@ impl WorkCluster {
                             )
                         }).collect::<HashSet<_>>();
                     }
-                    for product in case.products.iter_mut() {
+                    for product in case.outputs.iter_mut() {
                         *product = product.iter().map(|(edge, ty)| {
                             (
                                 out_edge_to_place.get_by_left(edge).unwrap().clone(),
@@ -115,26 +122,27 @@ impl WorkCluster {
         }
     }
     pub fn run(mut self) {
-        for (name, t_run) in self.transitions.iter_mut() {
-            for (f_name, case) in &t_run.description.cases {
-                for (i, condition) in case.conditions.iter().enumerate() {
-                    if (condition - self.state.binary()).len() == 0 {
-                        let mut in_map = HashMap::new();
-                        for p_ty in condition {
-                            in_map.insert(
-                                (t_run.in_edge_to_place.get_by_right(&p_ty.0).unwrap().clone(), p_ty.1.clone()),
-                                self.state.pop(p_ty),
-                            );
-                        }
-                        let mut out_map = HashMap::new();
-                        t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
-                        for ((e_name, ty), t) in out_map.into_iter() {
-                            let place = t_run.out_edge_to_place.get_by_left(&e_name).unwrap();
-                            self.state.places.get_mut(place).unwrap().get_mut(&ty).unwrap().push_back(t);
-                            *self.state.state.get_mut(&(place.clone(), ty)).unwrap() += 1;
-                            if !self.state.state_exists.contains(&(place.clone(), ty)) {
-                                self.state.state_exists.insert((place.clone(), ty));
+        let mut blocked = false;
+        while !blocked {
+            blocked = true;
+            for (name, t_run) in self.transitions.iter_mut() {
+                for (f_name, case) in &t_run.description.cases {
+                    for (i, condition) in case.inputs.iter().enumerate() {
+                        if (condition - self.state.binary()).len() == 0 {
+                            let mut in_map = HashMap::new();
+                            for p_ty in condition {
+                                in_map.insert(
+                                    (t_run.in_edge_to_place.get_by_right(&p_ty.0).unwrap().clone(), p_ty.1.clone()),
+                                    self.state.pop(p_ty),
+                                );
                             }
+                            let mut out_map = HashMap::new();
+                            t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
+                            for ((e_name, ty), t) in out_map.into_iter() {
+                                let place = t_run.out_edge_to_place.get_by_left(&e_name).unwrap().clone();
+                                self.state.push(&(place, ty), t);
+                            }
+                            blocked = false;
                         }
                     }
                 }
@@ -144,7 +152,6 @@ impl WorkCluster {
 }
 
 pub struct Reactor {
-    // TODO: mutiple work clusters
     work_cluster: WorkCluster,
 }
 
@@ -155,7 +162,6 @@ impl Reactor {
         }
     }
     pub fn run(self) {
-        println!("{:#?}", self.work_cluster);
         self.work_cluster.run();
         println!("Done!");
     }

@@ -11,6 +11,10 @@ path = "src/plotmuxui.rs"
 name = "sin"
 path = "src/sin.rs"
 
+[[bin]]
+name = "score"
+path = "src/score.rs"
+
 #[[bin]]
 #name = "radio"
 #path = "src/radio.rs"
@@ -31,3 +35,4 @@ rand = "0.8.5"
 nokhwa = { version = "0.9.4", features = ["input-v4l"] }
 image = "0.24.2"
 show-image = "0.12.3"
+ndarray = "0.15.6"
