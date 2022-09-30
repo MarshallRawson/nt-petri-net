@@ -1,18 +1,18 @@
 use proc_macro::TokenStream;
 use syn;
 
-mod fire;
-#[proc_macro_derive(Fire)]
-pub fn fire_derive(input: TokenStream) -> TokenStream {
+mod transition_input_tokens;
+#[proc_macro_derive(TransitionInputTokens)]
+pub fn transition_input_tokens_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
-    crate::fire::impl_fire_macro(&ast)
+    crate::transition_input_tokens::impl_transition_input_tokens_macro(&ast)
 }
 
-mod product;
-#[proc_macro_derive(Product)]
-pub fn product_derive(input: TokenStream) -> TokenStream {
+mod transition_output_tokens;
+#[proc_macro_derive(TransitionOutputTokens)]
+pub fn transition_output_tokens_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
-    crate::product::impl_product_macro(&ast)
+    crate::transition_output_tokens::impl_transition_output_tokens_macro(&ast)
 }
 
 mod transition;
