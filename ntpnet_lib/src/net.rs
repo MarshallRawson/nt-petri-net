@@ -1,5 +1,4 @@
 use std::collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque};
-use bimap::BiMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::hash::{Hash, Hasher};
@@ -43,7 +42,7 @@ impl Net {
     pub fn set_start_tokens(
         mut self,
         place: &str,
-        mut start_tokens: Vec<Token>,
+        start_tokens: Vec<Token>,
     ) -> Self {
         if let Some(p) = self.places.get_mut(&place.to_string()) {
             for t in start_tokens.into_iter() {

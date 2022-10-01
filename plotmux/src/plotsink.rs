@@ -1,4 +1,4 @@
-use crate::plotmux::{Color, PlotReceiver, PlotSender, Plotable2d, PlotableData};
+use crate::plotmux::{Color, PlotReceiver, PlotSender, Plotable2d, PlotableData, PlotableImage};
 
 pub struct PlotSink {
     name: String,
@@ -47,5 +47,9 @@ impl PlotSink {
     }
     pub fn plot_series_2d(&mut self, series: String, x: f64, y: f64) {
         self.send(Plotable2d::make(series, x, y));
+    }
+    pub fn plot_image(&mut self, image: image::RgbImage) {
+        let image = image::DynamicImage::ImageRgb8(image).thumbnail(100, 100).to_rgba8();
+        self.send(PlotableData::Image(PlotableImage::make(image)));
     }
 }

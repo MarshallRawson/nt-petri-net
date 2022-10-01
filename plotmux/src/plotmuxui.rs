@@ -5,6 +5,7 @@ use crossbeam_channel::{unbounded, Receiver, Sender};
 use eframe;
 use eframe::egui;
 use eframe::egui::widgets::plot;
+use egui_extras::image::RetainedImage;
 use image::io::Reader as ImageReader;
 use std::collections::HashMap;
 use std::io::Read;
@@ -12,6 +13,7 @@ use std::net::TcpStream;
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
+use std::path::Path;
 
 struct TcpHandler {
     stream: TcpStream,
@@ -56,14 +58,14 @@ impl TcpHandler {
 enum PlotMode {
     Text(),
     Series2d(),
+    Image(),
 }
 pub struct PlotMuxUi {
     sources: Vec<PlotSource>,
     port: u32,
     receiver: Option<Receiver<(usize, PlotableData)>>,
     source_search: String,
-    graph_texture: Option<egui::TextureHandle>,
-    graph_image: Option<egui::ColorImage>,
+    graph_image: RetainedImage,
     show_graph: bool,
     selected_source: Option<usize>,
     mode: Option<PlotMode>,
@@ -73,12 +75,7 @@ impl PlotMuxUi {
     pub fn make(graph_png_path: &String, port: u32, source_names: Vec<String>) -> Self {
         let mut sources = Vec::<_>::new();
         for name in &source_names {
-            sources.push(PlotSource {
-                name: name.clone(),
-                color: color(&name),
-                text: vec![],
-                series_2d: HashMap::new(),
-            });
+            sources.push(PlotSource::make(name.clone()));
         }
         let graph_image = ImageReader::open(graph_png_path).unwrap();
         let graph_image = graph_image.decode().unwrap();
@@ -88,31 +85,30 @@ impl PlotMuxUi {
             port: port,
             receiver: None,
             source_search: "".into(),
-            graph_texture: None,
-            graph_image: Some(egui::ColorImage::from_rgba_unmultiplied(
-                [graph_image.width() as _, graph_image.height() as _],
-                graph_image.as_raw(),
-            )),
             show_graph: false,
+            graph_image: RetainedImage::from_color_image("graph image",
+                egui::ColorImage::from_rgba_unmultiplied(
+                    [graph_image.width() as _, graph_image.height() as _],
+                    graph_image.as_raw(),
+                )
+            ),
             selected_source: None,
             mode: None,
             series_2d_history: 0.0,
         }
     }
     pub fn spin(mut self) {
-        loop {
-            let (tcp_handler, rx) = TcpHandler::make(self.port);
-            self.receiver = Some(rx);
-            let native_options = eframe::NativeOptions::default();
-            eframe::run_native(
-                "PlotMux",
-                native_options,
-                Box::new(|cc| {
-                    tcp_handler.spin(cc.egui_ctx.clone());
-                    Box::new(self)
-                }),
-            );
-        }
+        let native_options = eframe::NativeOptions::default();
+        eframe::run_native(
+            "PlotMux",
+            native_options,
+            Box::new(|cc| {
+                let (tcp_handler, rx) = TcpHandler::make(self.port);
+                self.receiver = Some(rx);
+                tcp_handler.spin(cc.egui_ctx.clone());
+                Box::new(self)
+            }),
+        );
     }
 }
 
@@ -121,16 +117,10 @@ impl eframe::App for PlotMuxUi {
         while let Ok((idx, new_data)) = self.receiver.as_ref().unwrap().try_recv() {
             self.sources[idx].new_data(new_data);
         }
-        if self.graph_texture.is_none() {
-            self.graph_texture = Some(ctx.load_texture("Graph", self.graph_image.take().unwrap()));
-        }
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.checkbox(&mut self.show_graph, "Graph");
             if self.show_graph {
-                ui.image(
-                    self.graph_texture.as_ref().unwrap(),
-                    self.graph_texture.as_ref().unwrap().size_vec2(),
-                );
+                self.graph_image.show(ui);
             } else {
                 ui.horizontal(|ui| {
                     ui.label("Source: ");
@@ -156,26 +146,30 @@ impl eframe::App for PlotMuxUi {
                     ui.heading(&self.sources[source_idx].name);
                     let mut text = None;
                     let mut series_2d = None;
+                    let mut image = None;
                     ui.horizontal(|ui| {
                         text = Some(ui.button("text"));
                         series_2d = Some(ui.button("series_2d"));
+                        image = Some(ui.button("image"));
                     });
                     if text.unwrap().clicked() {
                         self.mode = Some(PlotMode::Text());
                     } else if series_2d.unwrap().clicked() {
                         self.mode = Some(PlotMode::Series2d());
+                    } else if image.unwrap().clicked() {
+                        self.mode = Some(PlotMode::Image());
                     }
                     match &self.mode {
                         Some(m) => match m {
                             PlotMode::Text() => {
                                 egui::ScrollArea::vertical()
-                                    .stick_to_bottom()
+                                    .stick_to_bottom(true)
                                     .show(ui, |ui| {
                                         for t in &self.sources[source_idx].text {
                                             ui.label(t);
                                         }
                                     });
-                            }
+                            },
                             PlotMode::Series2d() => {
                                 ui.horizontal(|ui| {
                                     ui.label("History:");
@@ -206,7 +200,7 @@ impl eframe::App for PlotMuxUi {
                                                     vec![]
                                                 }
                                             };
-                                            let line = plot::Line::new(plot::Values::from_values(
+                                            let line = plot::Line::new(plot::PlotPoints::Owned(
                                                 plot_vec.clone(),
                                             ))
                                             .name(name)
@@ -216,7 +210,13 @@ impl eframe::App for PlotMuxUi {
                                             plot_ui.line(line);
                                         }
                                     });
-                            }
+                            },
+                            PlotMode::Image() => {
+                                ui.centered_and_justified(|ui| {
+                                    self.sources[source_idx].plot_image.show(ui);
+                                });
+                            },
+
                         },
                         None => (),
                     }

@@ -7,6 +7,7 @@ use std::io::Write;
 use std::net::{TcpListener, TcpStream}; //, IpAddr, Ipv4Addr, Shutdown};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use image::RgbImage;
 
 use crate::plotsink::PlotSink;
 
@@ -30,6 +31,7 @@ pub type PlotSender = Sender<PlotableData>;
 pub enum PlotableData {
     String(PlotableString),
     Series2d(Plotable2d),
+    Image(PlotableImage),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -51,6 +53,20 @@ pub struct Plotable2d {
 impl Plotable2d {
     pub fn make(series: String, x: f64, y: f64) -> PlotableData {
         PlotableData::Series2d(Plotable2d { series, x, y })
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PlotableImage {
+    pub dim: (u32, u32),
+    pub raw: Vec<u8>,
+}
+impl PlotableImage {
+    pub fn make(image: image::RgbaImage) -> Self {
+        Self {
+            dim: image.dimensions(),
+            raw: image.into_raw(),
+        }
     }
 }
 
