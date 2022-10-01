@@ -1,4 +1,4 @@
-use crate::plotmux::{color, PlotableData};
+use crate::plotmux::PlotableData;
 use crate::plotsource::PlotSource;
 use bincode;
 use crossbeam_channel::{unbounded, Receiver, Sender};
@@ -7,13 +7,11 @@ use eframe::egui;
 use eframe::egui::widgets::plot;
 use egui_extras::image::RetainedImage;
 use image::io::Reader as ImageReader;
-use std::collections::HashMap;
 use std::io::Read;
 use std::net::TcpStream;
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-use std::path::Path;
 
 struct TcpHandler {
     stream: TcpStream,
@@ -128,16 +126,22 @@ impl eframe::App for PlotMuxUi {
                     let possible_source_names = self
                         .sources
                         .iter()
-                        .filter(|source| source.name.starts_with(&self.source_search))
-                        .map(|source| source.name.clone())
-                        .collect::<Vec<String>>();
+                        .enumerate()
+                        .filter_map(|(i, source)| {
+                            if source.name.starts_with(&self.source_search) {
+                                Some((i, source.name.clone()))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<(usize, String)>>();
                     let buttons = possible_source_names
                         .iter()
-                        .map(|s| ui.button(s).clicked())
-                        .collect::<Vec<bool>>();
-                    for (i, clicked) in buttons.iter().enumerate() {
+                        .map(|(i, s)| (*i, ui.button(s).clicked()))
+                        .collect::<Vec<(usize, bool)>>();
+                    for (i, clicked) in buttons.iter() {
                         if *clicked {
-                            self.selected_source = Some(i);
+                            self.selected_source = Some(*i);
                             break;
                         }
                     }

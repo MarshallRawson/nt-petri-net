@@ -7,7 +7,6 @@ use std::io::Write;
 use std::net::{TcpListener, TcpStream}; //, IpAddr, Ipv4Addr, Shutdown};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use image::RgbImage;
 
 use crate::plotsink::PlotSink;
 

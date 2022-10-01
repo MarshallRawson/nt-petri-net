@@ -28,9 +28,8 @@ mod sin {
     }
 }
 
-use ntpnet_lib::{net::Net, reactor::Reactor, Token};
+use ntpnet_lib::{net::Net, reactor::Reactor};
 use plotmux::plotmux::PlotMux;
-use std::any::{Any, TypeId};
 use std::thread;
 
 fn main() {
@@ -39,8 +38,11 @@ fn main() {
         .set_start_tokens("time", vec![Box::new(0.)])
         .place_to_transition("time", "t", "sin")
         .add_transition("sin", sin::Sin::maker(plotmux.add_plot_sink("sin")))
-        .transition_to_place("sin", "t", "time");
-    plotmux.make_ready(&n.png());
+        .transition_to_place("sin", "t", "time")
+    ;
+    let png = n.png();
+    let r = Reactor::make(n, &mut plotmux);
+    plotmux.make_ready(&png);
     thread::spawn(move || plotmux.spin());
-    Reactor::make(n).run();
+    r.run();
 }

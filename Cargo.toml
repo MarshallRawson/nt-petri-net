@@ -12,10 +12,6 @@ name = "sin"
 path = "src/sin.rs"
 
 [[bin]]
-name = "score"
-path = "src/score.rs"
-
-[[bin]]
 name = "webcam"
 path = "src/webcam.rs"
 
@@ -25,9 +21,6 @@ ntpnet_lib = { path = "./ntpnet_lib" }
 ntpnet_macro = { path = "./ntpnet_macro" }
 plotmux = { path = "./plotmux" }
 
-rand = "0.8.5"
 nokhwa = { version = "0.9.4", features = ["input-v4l"] }
 image = "0.24.2"
-show-image = "0.12.3"
-ndarray = "0.15.6"
 clap = { version = "4.0.7", features = ["derive"] }
