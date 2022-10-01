@@ -110,7 +110,9 @@ fn main() {
         .place_to_transition("Image", "image", "image_consumer")
         .transition_to_place("image_consumer", "out", "E")
     ;
-    plotmux.make_ready(&n.png());
+    let png = n.png();
+    let r = Reactor::make(n, &mut plotmux);
+    plotmux.make_ready(&png);
     thread::spawn(move || plotmux.spin());
-    Reactor::make(n).run();
+    r.run();
 }
