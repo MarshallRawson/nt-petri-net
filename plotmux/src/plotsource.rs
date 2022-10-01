@@ -4,7 +4,6 @@ use eframe::egui::widgets::plot::PlotPoint;
 use egui_extras::image::RetainedImage;
 
 use image::io::Reader as ImageReader;
-use image::buffer::ConvertBuffer;
 use std::collections::HashMap;
 use std::path::Path;
 
