@@ -1,5 +1,4 @@
 use crate::plotmux::{Color, PlotReceiver, PlotSender, Plotable2d, PlotableData, PlotableImage};
-use image::imageops::FilterType;
 
 #[derive(Debug)]
 pub struct PlotSink {
@@ -50,8 +49,7 @@ impl PlotSink {
     pub fn plot_series_2d(&mut self, series: String, x: f64, y: f64) {
         self.send(Plotable2d::make(series, x, y));
     }
-    pub fn plot_image(&mut self, image: image::RgbImage) {
-        let image = image::DynamicImage::ImageRgb8(image).resize(100, 100, FilterType::Nearest).to_rgba8();
+    pub fn plot_image(&mut self, image: image::RgbaImage) {
         self.send(PlotableData::Image(PlotableImage::make(image)));
     }
 }

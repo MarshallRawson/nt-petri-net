@@ -3,6 +3,7 @@ use eframe::egui;
 use eframe::egui::widgets::plot::PlotPoint;
 use egui_extras::image::RetainedImage;
 
+use image::buffer::ConvertBuffer;
 use image::io::Reader as ImageReader;
 use std::collections::HashMap;
 use std::path::Path;
@@ -47,6 +48,7 @@ impl PlotSource {
                 }
             },
             PlotableData::Image(pimage) => {
+                use std::time::Instant;
                 let pimage : image::RgbaImage = image::RgbaImage::from_raw(pimage.dim.0, pimage.dim.1, pimage.raw).unwrap();
                 self.plot_image = RetainedImage::from_color_image("plotmux image",
                     egui::ColorImage::from_rgba_unmultiplied(

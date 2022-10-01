@@ -1,5 +1,5 @@
 mod camera_reader {
-    use image::RgbImage;
+    use image::{RgbaImage, RgbImage};
     use plotmux::plotsink::PlotSink;
     use nokhwa::{Camera, CameraFormat, FrameFormat};
     use ntpnet_lib::TransitionMaker;
@@ -9,7 +9,7 @@ mod camera_reader {
     }
     #[derive(ntpnet_macro::TransitionOutputTokens)]
     struct Image {
-        image: RgbImage,
+        image: RgbaImage,
     }
     #[derive(ntpnet_macro::Transition)]
     #[ntpnet_transition(read: Input(E) -> Output(Image))]
@@ -38,15 +38,19 @@ mod camera_reader {
             })
         }
         fn read(&mut self, _: Input) -> Output {
+            let resolution = self.camera.resolution();
             let frame = self.camera.frame().unwrap();
-            self.p.println("got Image!");
-            Output::Image(Image { image: RgbImage::from_vec(frame.width(), frame.height(), frame.into_vec()).unwrap() })
+            let rgb_frame = RgbImage::from_raw(resolution.width(), resolution.height(), frame.to_vec()).unwrap();
+            use image::buffer::ConvertBuffer;
+            Output::Image(Image {
+                image: rgb_frame.convert()
+            })
         }
     }
 }
 
 mod image_consumer {
-    use image::RgbImage;
+    use image::RgbaImage;
     use plotmux::plotsink::PlotSink;
     use ntpnet_lib::TransitionMaker;
     #[derive(ntpnet_macro::TransitionOutputTokens)]
@@ -55,7 +59,7 @@ mod image_consumer {
     }
     #[derive(ntpnet_macro::TransitionInputTokens)]
     struct Image {
-        image: RgbImage,
+        image: RgbaImage,
     }
     #[derive(ntpnet_macro::Transition)]
     #[ntpnet_transition(consume: Input(Image) -> Output(Out))]
@@ -67,7 +71,6 @@ mod image_consumer {
             Box::new(move || Box::new(Self { p: plotsink, }))
         }
         fn consume(&mut self, i: Input) -> Output {
-            self.p.println("got Image 2!");
             match i {
                 Input::Image(Image { image } ) => {
                     self.p.plot_image(image);

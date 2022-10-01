@@ -58,6 +58,7 @@ impl Plotable2d {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PlotableImage {
     pub dim: (u32, u32),
+    #[serde(with = "serde_bytes")]
     pub raw: Vec<u8>,
 }
 impl PlotableImage {
