@@ -3,7 +3,7 @@ use std::any::TypeId;
 use bimap::BiMap;
 
 use crate::transition::{Transition, Description};
-use crate::{Token, TransitionMaker, net::Net};
+use crate::{Token, net::Net};
 
 #[derive(Debug)]
 struct TransitionRuntime {
@@ -20,7 +20,7 @@ struct State {
     state_exists: HashSet<(String, TypeId)>,
 }
 impl State {
-    fn make(mut places: HashMap<String, HashMap<TypeId, VecDeque<Token>>>, transitions: &HashMap<String, TransitionRuntime>) -> Self {
+    fn make(mut places: HashMap<String, HashMap<TypeId, VecDeque<Token>>>) -> Self {
         let state = {
             let mut state = HashMap::new();
             for (place_name, ty_v) in places.iter_mut() {
@@ -67,7 +67,7 @@ struct WorkCluster {
     state: State,
 }
 impl WorkCluster {
-    pub fn make(mut n: Net) -> Self {
+    pub fn make(n: Net) -> Self {
         let transitions = n.transitions.into_iter()
             .map(|(name, t_maker)| {
                 let t = t_maker();
@@ -105,7 +105,7 @@ impl WorkCluster {
             })
             .collect::<HashMap<_,_>>();
         Self {
-            state: State::make(n.places, &transitions),
+            state: State::make(n.places),
             transitions: transitions,
         }
     }
@@ -113,7 +113,7 @@ impl WorkCluster {
         let mut blocked = false;
         while !blocked {
             blocked = true;
-            for (name, t_run) in self.transitions.iter_mut() {
+            for (_t_name, t_run) in self.transitions.iter_mut() {
                 for (f_name, case) in &t_run.description.cases {
                     for (i, condition) in case.inputs.iter().enumerate() {
                         if (condition - self.state.binary()).len() == 0 {

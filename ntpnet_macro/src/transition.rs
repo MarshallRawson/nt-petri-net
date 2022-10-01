@@ -79,7 +79,7 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
                 |acc, e| quote!{(#acc .union(&<#e as ::ntpnet_lib::transition_output_tokens::TransitionOutputTokens>::out_edges())
                     .cloned().collect::<::std::collections::HashSet<_>>())}
             );
-            quote!{ #in_edges }
+            quote!{ #out_edges }
         } else {
             quote!{<#enum_first as ::ntpnet_lib::transition_output_tokens::TransitionOutputTokens>::out_edges() }
         }

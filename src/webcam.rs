@@ -5,7 +5,7 @@ mod camera_reader {
     use ntpnet_lib::TransitionMaker;
     #[derive(ntpnet_macro::TransitionInputTokens)]
     struct E {
-        enable: (),
+        _enable: (),
     }
     #[derive(ntpnet_macro::TransitionOutputTokens)]
     struct Image {
@@ -48,7 +48,6 @@ mod camera_reader {
 mod image_consumer {
     use image::RgbImage;
     use plotmux::plotsink::PlotSink;
-    use nokhwa::{Camera, CameraFormat, FrameFormat};
     use ntpnet_lib::TransitionMaker;
     #[derive(ntpnet_macro::TransitionOutputTokens)]
     struct Out {
@@ -67,15 +66,20 @@ mod image_consumer {
         pub fn maker(plotsink: PlotSink) -> TransitionMaker {
             Box::new(move || Box::new(Self { p: plotsink, }))
         }
-        fn consume(&mut self, _: Input) -> Output {
+        fn consume(&mut self, i: Input) -> Output {
+            self.p.println("got Image 2!");
+            match i {
+                Input::Image(Image { image } ) => {
+                    self.p.plot_image(image);
+                }
+            };
             Output::Out(Out { out: () })
         }
     }
 }
 
-use ntpnet_lib::{net::Net, reactor::Reactor, Token};
+use ntpnet_lib::{net::Net, reactor::Reactor};
 use plotmux::plotmux::PlotMux;
-use std::any::{Any, TypeId};
 use std::thread;
 
 use clap::Parser;
@@ -94,7 +98,7 @@ fn main() {
     let mut plotmux = PlotMux::make();
     let n = Net::make()
         .set_start_tokens("E", vec![Box::new(())])
-        .place_to_transition("E", "enable", "camera_reader")
+        .place_to_transition("E", "_enable", "camera_reader")
         .add_transition("camera_reader",
             camera_reader::CameraReader::maker(
                 args.width, args.height,
@@ -106,7 +110,6 @@ fn main() {
         .place_to_transition("Image", "image", "image_consumer")
         .transition_to_place("image_consumer", "out", "E")
     ;
-    println!("places {:#?}", n.places);
     plotmux.make_ready(&n.png());
     thread::spawn(move || plotmux.spin());
     Reactor::make(n).run();
