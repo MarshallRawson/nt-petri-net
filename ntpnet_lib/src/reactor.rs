@@ -2,8 +2,12 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::any::TypeId;
 use bimap::BiMap;
 
+use plotmux::{plotmux::PlotMux, plotsink::PlotSink};
+
 use crate::transition::{Transition, Description};
 use crate::{Token, net::Net};
+
+use std::time::Instant;
 
 #[derive(Debug)]
 struct TransitionRuntime {
@@ -65,9 +69,10 @@ impl State {
 struct WorkCluster {
     transitions: HashMap<String, TransitionRuntime>,
     state: State,
+    plot_sink: PlotSink,
 }
 impl WorkCluster {
-    pub fn make(n: Net) -> Self {
+    pub fn make(n: Net, plot_sink: PlotSink) -> Self {
         let transitions = n.transitions.into_iter()
             .map(|(name, t_maker)| {
                 let t = t_maker();
@@ -107,13 +112,16 @@ impl WorkCluster {
         Self {
             state: State::make(n.places),
             transitions: transitions,
+            plot_sink: plot_sink,
         }
     }
     pub fn run(mut self) {
+        let start = Instant::now();
+        self.plot_sink.plot_series_2d("reactor".into(), 0.0, 1.0);
         let mut blocked = false;
         while !blocked {
             blocked = true;
-            for (_t_name, t_run) in self.transitions.iter_mut() {
+            for (t_name, t_run) in self.transitions.iter_mut() {
                 for (f_name, case) in &t_run.description.cases {
                     for (i, condition) in case.inputs.iter().enumerate() {
                         if (condition - self.state.binary()).len() == 0 {
@@ -125,7 +133,17 @@ impl WorkCluster {
                                 );
                             }
                             let mut out_map = HashMap::new();
+                            let elapsed = (Instant::now() - start).as_secs_f64();
+                            self.plot_sink.plot_series_2d("reactor".into(), elapsed, 1.0);
+                            self.plot_sink.plot_series_2d("reactor".into(), elapsed, 0.0);
+                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 0.0);
+                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 1.0);
                             t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
+                            let elapsed = (Instant::now() - start).as_secs_f64();
+                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 1.0);
+                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 0.0);
+                            self.plot_sink.plot_series_2d("reactor".into(), elapsed, 0.0);
+                            self.plot_sink.plot_series_2d("reactor".into(), elapsed, 1.0);
                             for ((e_name, ty), t) in out_map.into_iter() {
                                 let place = t_run.out_edge_to_place.get_by_left(&e_name).unwrap().clone();
                                 self.state.push(&(place, ty), t);
@@ -144,9 +162,9 @@ pub struct Reactor {
 }
 
 impl Reactor {
-    pub fn make(net: Net) -> Self {
+    pub fn make(net: Net, plotmux: &mut PlotMux) -> Self {
         Self {
-            work_cluster: WorkCluster::make(net),
+            work_cluster: WorkCluster::make(net, plotmux.add_plot_sink("work_cluster0")),
         }
     }
     pub fn run(self) {
