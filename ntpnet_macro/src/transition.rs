@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, TokenTree, Delimiter};
-use proc_macro2::TokenTree::{Group};
+use proc_macro2::TokenTree::Group;
+use proc_macro2::{Delimiter, Ident, TokenTree};
 use quote::quote;
 use std::collections::HashSet;
 
@@ -12,7 +12,9 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
         input: (Ident, Vec<Ident>),
         output: (Ident, Vec<Ident>),
     }
-    let token_callbacks = get_attr(ast, "ntpnet_transition").iter().map(|ts| {
+    let token_callbacks = get_attr(ast, "ntpnet_transition")
+        .iter()
+        .map(|ts| {
             let mut vt = ts.clone().into_iter().collect::<Vec<_>>();
             let name = match vt.remove(0) {
                 TokenTree::Ident(i) => i,
@@ -37,21 +39,30 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
                 input: input,
                 output: output,
             }
-        }).collect::<Vec<TransitionCallback>>();
-    let interface_enums = token_callbacks.iter().fold(vec![], |mut acc, tc| {
+        })
+        .collect::<Vec<TransitionCallback>>();
+    let interface_enums = token_callbacks
+        .iter()
+        .fold(vec![], |mut acc, tc| {
             acc.push(tc.input.clone());
             acc.push(tc.output.clone());
             acc
-        }).iter().fold(quote!{}, |acc, (name, enums)| {
-            let enum_fields = enums.iter().fold(quote!{}, |acc, e| quote!{#acc #e(#e),});
-            quote!{#acc enum #name {#enum_fields}}
+        })
+        .iter()
+        .fold(quote! {}, |acc, (name, enums)| {
+            let enum_fields = enums.iter().fold(quote! {}, |acc, e| quote! {#acc #e(#e),});
+            quote! {#acc enum #name {#enum_fields}}
         });
-    let in_edges = token_callbacks.iter().fold(HashSet::new(), |mut acc, tc| {
+    let in_edges = token_callbacks
+        .iter()
+        .fold(HashSet::new(), |mut acc, tc| {
             for e in &tc.input.1 {
                 acc.insert(e.clone());
             }
             acc
-        }).into_iter().collect::<Vec<_>>();
+        })
+        .into_iter()
+        .collect::<Vec<_>>();
     let in_edges = {
         let enum_first = &in_edges[0];
         if in_edges.len() > 1 {
@@ -60,17 +71,21 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
                 |acc, e| quote!{(#acc .union(&<#e as ::ntpnet_lib::transition_input_tokens::TransitionInputTokens>::in_edges())
                     .cloned().collect::<::std::collections::HashSet<_>>())}
             );
-            quote!{ #in_edges }
+            quote! { #in_edges }
         } else {
-            quote!{<#enum_first as ::ntpnet_lib::transition_input_tokens::TransitionInputTokens>::in_edges() }
+            quote! {<#enum_first as ::ntpnet_lib::transition_input_tokens::TransitionInputTokens>::in_edges() }
         }
     };
-    let out_edges = token_callbacks.iter().fold(HashSet::new(), |mut acc, tc| {
+    let out_edges = token_callbacks
+        .iter()
+        .fold(HashSet::new(), |mut acc, tc| {
             for e in &tc.output.1 {
                 acc.insert(e.clone());
             }
             acc
-        }).into_iter().collect::<Vec<_>>();
+        })
+        .into_iter()
+        .collect::<Vec<_>>();
     let out_edges = {
         let enum_first = &out_edges[0];
         if out_edges.len() > 1 {
@@ -79,9 +94,9 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
                 |acc, e| quote!{(#acc .union(&<#e as ::ntpnet_lib::transition_output_tokens::TransitionOutputTokens>::out_edges())
                     .cloned().collect::<::std::collections::HashSet<_>>())}
             );
-            quote!{ #out_edges }
+            quote! { #out_edges }
         } else {
-            quote!{<#enum_first as ::ntpnet_lib::transition_output_tokens::TransitionOutputTokens>::out_edges() }
+            quote! {<#enum_first as ::ntpnet_lib::transition_output_tokens::TransitionOutputTokens>::out_edges() }
         }
     };
     let cases = token_callbacks.iter().fold(quote!{},
@@ -107,7 +122,7 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
             }
         }
     );
-    let cases = quote!{::std::collections::HashMap::from([#cases])};
+    let cases = quote! {::std::collections::HashMap::from([#cases])};
     let callbacks = token_callbacks.iter().fold(quote!{},
         |acc, tc| {
             let input = &tc.input.0;
@@ -174,13 +189,14 @@ fn pop_interface(vt: &mut Vec<TokenTree>) -> (Ident, Vec<Ident>) {
     let enums = match vt.remove(0) {
         TokenTree::Group(g) => {
             assert!(g.delimiter() == Delimiter::Parenthesis);
-            g.stream().into_iter().filter_map(|t| {
-                match t {
+            g.stream()
+                .into_iter()
+                .filter_map(|t| match t {
                     TokenTree::Ident(i) => Some(i),
                     _ => None,
-                }
-            }).collect::<Vec<Ident>>()
-        },
+                })
+                .collect::<Vec<Ident>>()
+        }
         _ => unimplemented!(),
     };
     (name, enums)
@@ -191,11 +207,11 @@ fn get_attr(ast: &syn::DeriveInput, attr: &str) -> Vec<proc_macro2::TokenStream>
         .iter()
         .filter(|a| a.path.segments[0].ident == attr)
         .map(|a| a.tokens.clone())
-        .fold(quote!{}, |acc, x| quote!{#acc #x,})
-        .into_iter().filter_map(|g| {
-            match g {
-                Group(g) => Some(g.stream().into()),
-                _ => None,
-            }
-        }).collect::<Vec<_>>()
+        .fold(quote! {}, |acc, x| quote! {#acc #x,})
+        .into_iter()
+        .filter_map(|g| match g {
+            Group(g) => Some(g.stream().into()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
 }

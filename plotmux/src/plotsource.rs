@@ -7,11 +7,11 @@ use std::mem::size_of;
 use image::buffer::ConvertBuffer;
 use image::Rgba;
 use image::RgbaImage;
-use std::collections::{HashMap, VecDeque};
 use lazy_static::lazy_static;
+use std::collections::{HashMap, VecDeque};
 
 lazy_static! {
-    static ref DEFAULT_IMAGE : RgbaImage = RgbaImage::from_fn(1920, 1080, |y, x| {
+    static ref DEFAULT_IMAGE: RgbaImage = RgbaImage::from_fn(1920, 1080, |y, x| {
         let x = x as f64 * (6. / 1079.) - 3.;
         let y = y as i32 - (1920 - 1080) / 2;
         let y = y as f64 * (6. / 1079.) - 3.;
@@ -46,11 +46,13 @@ impl PlotSource {
             memory_footprint: 0,
             text: VecDeque::new(),
             series_2d: HashMap::new(),
-            plot_image: RetainedImage::from_color_image("plotmux image",
+            plot_image: RetainedImage::from_color_image(
+                "plotmux image",
                 egui::ColorImage::from_rgba_unmultiplied(
                     [default_image.width() as _, default_image.height() as _],
                     default_image.as_raw(),
-            )),
+                ),
+            ),
         }
     }
     pub fn new_data(&mut self, d: PlotableData) {
@@ -64,7 +66,7 @@ impl PlotSource {
                     self.memory_footprint -= size_of::<String>();
                     self.memory_footprint -= s.len();
                 }
-            },
+            }
             PlotableData::Series2d(series_2d) => match self.series_2d.get_mut(&series_2d.series) {
                 Some(points) => {
                     self.memory_footprint += size_of::<PlotPoint>();
@@ -78,18 +80,26 @@ impl PlotSource {
                     let c = color(&series_2d.series);
                     self.series_2d.insert(
                         series_2d.series,
-                        (c, VecDeque::from([PlotPoint::new(series_2d.x, series_2d.y)])),
+                        (
+                            c,
+                            VecDeque::from([PlotPoint::new(series_2d.x, series_2d.y)]),
+                        ),
                     );
                 }
             },
             PlotableData::Image(pimage) => {
-                let pimage : image::RgbaImage = image::RgbImage::from_raw(pimage.dim.0, pimage.dim.1, pimage.raw).unwrap().convert();
-                self.plot_image = RetainedImage::from_color_image("plotmux image",
+                let pimage: image::RgbaImage =
+                    image::RgbImage::from_raw(pimage.dim.0, pimage.dim.1, pimage.raw)
+                        .unwrap()
+                        .convert();
+                self.plot_image = RetainedImage::from_color_image(
+                    "plotmux image",
                     egui::ColorImage::from_rgba_unmultiplied(
                         [pimage.width() as _, pimage.height() as _],
                         pimage.as_raw(),
-                ));
-            },
+                    ),
+                );
+            }
         }
     }
 }

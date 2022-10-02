@@ -2,8 +2,7 @@ mod sin {
     use ntpnet_lib::TransitionMaker;
     use plotmux::plotsink::PlotSink;
     use std::{thread, time};
-    #[derive(ntpnet_macro::TransitionInputTokens)]
-    #[derive(ntpnet_macro::TransitionOutputTokens)]
+    #[derive(ntpnet_macro::TransitionInputTokens, ntpnet_macro::TransitionOutputTokens)]
     struct Time {
         t: f64,
     }
@@ -37,8 +36,7 @@ fn main() {
         .set_start_tokens("time", vec![Box::new(0.)])
         .place_to_transition("time", "t", "sin")
         .add_transition("sin", sin::Sin::maker(plotmux.add_plot_sink("sin")))
-        .transition_to_place("sin", "t", "time")
-    ;
+        .transition_to_place("sin", "t", "time");
     let png = n.png();
     let r = Reactor::make(n, &mut plotmux);
     plotmux.make_ready(&png);

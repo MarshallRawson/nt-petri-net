@@ -1,5 +1,5 @@
-use std::collections::{HashMap, HashSet};
 use std::any::TypeId;
+use std::collections::{HashMap, HashSet};
 
 use crate::Token;
 

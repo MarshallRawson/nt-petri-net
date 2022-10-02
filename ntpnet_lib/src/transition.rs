@@ -1,5 +1,5 @@
-use std::collections::{HashSet, HashMap};
 use std::any::TypeId;
+use std::collections::{HashMap, HashSet};
 
 use crate::Token;
 
@@ -17,9 +17,12 @@ pub struct Case {
 
 pub trait Transition {
     fn description(&self) -> Description;
-    fn call(&mut self, case: &str, condition: usize,
-            in_map: &mut HashMap<(String, TypeId), Token>,
-            out_map: &mut HashMap<(String, TypeId), Token>,
+    fn call(
+        &mut self,
+        case: &str,
+        condition: usize,
+        in_map: &mut HashMap<(String, TypeId), Token>,
+        out_map: &mut HashMap<(String, TypeId), Token>,
     ) -> usize;
 }
 
@@ -29,4 +32,3 @@ impl Debug for dyn Transition {
         write!(f, "Transition{{{:#?}}}", self.description())
     }
 }
-

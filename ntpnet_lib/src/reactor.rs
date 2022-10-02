@@ -1,11 +1,11 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::any::TypeId;
 use bimap::BiMap;
+use std::any::TypeId;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use plotmux::{plotmux::PlotMux, plotsink::PlotSink};
 
-use crate::transition::{Transition, Description};
-use crate::{Token, net::Net};
+use crate::transition::{Description, Transition};
+use crate::{net::Net, Token};
 
 use std::time::Instant;
 
@@ -34,7 +34,10 @@ impl State {
             }
             state
         };
-        let state_exists = state.iter().filter_map(|(k, v)| if *v > 0 { Some(k.clone()) } else { None }).collect::<_>();
+        let state_exists = state
+            .iter()
+            .filter_map(|(k, v)| if *v > 0 { Some(k.clone()) } else { None })
+            .collect::<_>();
 
         Self {
             places: places,
@@ -50,14 +53,28 @@ impl State {
         if *self.state.get_mut(p_ty).unwrap() == 0 {
             self.state_exists.remove(p_ty);
         }
-        self.places.get_mut(&p_ty.0).unwrap().get_mut(&p_ty.1).unwrap().pop_front().unwrap()
+        self.places
+            .get_mut(&p_ty.0)
+            .unwrap()
+            .get_mut(&p_ty.1)
+            .unwrap()
+            .pop_front()
+            .unwrap()
     }
     fn push(&mut self, p_ty: &(String, TypeId), t: Token) {
         if !self.places[&p_ty.0].contains_key(&p_ty.1) {
-            self.places.get_mut(&p_ty.0).unwrap().insert(p_ty.1.clone(), VecDeque::new());
+            self.places
+                .get_mut(&p_ty.0)
+                .unwrap()
+                .insert(p_ty.1.clone(), VecDeque::new());
             self.state.insert(p_ty.clone(), 0);
         }
-        self.places.get_mut(&p_ty.0).unwrap().get_mut(&p_ty.1).unwrap().push_back(t);
+        self.places
+            .get_mut(&p_ty.0)
+            .unwrap()
+            .get_mut(&p_ty.1)
+            .unwrap()
+            .push_back(t);
         *self.state.get_mut(p_ty).unwrap() += 1;
         if !self.state_exists.contains(p_ty) {
             self.state_exists.insert(p_ty.clone());
@@ -73,42 +90,59 @@ struct WorkCluster {
 }
 impl WorkCluster {
     pub fn make(n: Net, plot_sink: PlotSink) -> Self {
-        let transitions = n.transitions.into_iter()
+        let transitions = n
+            .transitions
+            .into_iter()
             .map(|(name, t_maker)| {
                 let t = t_maker();
                 let mut d = t.description();
-                let in_edge_to_place = n.pt_edges.iter()
-                    .filter(|((_,t),_)| t == &name)
-                    .map(|((p, _), e)| (e.clone(), p.clone())).collect::<BiMap<String, String>>();
-                let out_edge_to_place = n.tp_edges.iter()
-                    .filter(|((t,_),_)| t == &name)
-                    .map(|((_, p), e)| (e.clone(), p.clone())).collect::<BiMap<String, String>>();
+                let in_edge_to_place = n
+                    .pt_edges
+                    .iter()
+                    .filter(|((_, t), _)| t == &name)
+                    .map(|((p, _), e)| (e.clone(), p.clone()))
+                    .collect::<BiMap<String, String>>();
+                let out_edge_to_place = n
+                    .tp_edges
+                    .iter()
+                    .filter(|((t, _), _)| t == &name)
+                    .map(|((_, p), e)| (e.clone(), p.clone()))
+                    .collect::<BiMap<String, String>>();
                 for (_, case) in d.cases.iter_mut() {
                     for condition in case.inputs.iter_mut() {
-                        *condition = condition.iter().map(|(edge, ty)| {
-                            (
-                                in_edge_to_place.get_by_left(edge).unwrap().clone(),
-                                ty.clone(),
-                            )
-                        }).collect::<HashSet<_>>();
+                        *condition = condition
+                            .iter()
+                            .map(|(edge, ty)| {
+                                (
+                                    in_edge_to_place.get_by_left(edge).unwrap().clone(),
+                                    ty.clone(),
+                                )
+                            })
+                            .collect::<HashSet<_>>();
                     }
                     for product in case.outputs.iter_mut() {
-                        *product = product.iter().map(|(edge, ty)| {
-                            (
-                                out_edge_to_place.get_by_left(edge).unwrap().clone(),
-                                ty.clone(),
-                            )
-                        }).collect::<_>();
+                        *product = product
+                            .iter()
+                            .map(|(edge, ty)| {
+                                (
+                                    out_edge_to_place.get_by_left(edge).unwrap().clone(),
+                                    ty.clone(),
+                                )
+                            })
+                            .collect::<_>();
                     }
                 }
-                (name, TransitionRuntime {
-                    t: t,
-                    description: d,
-                    in_edge_to_place: in_edge_to_place,
-                    out_edge_to_place: out_edge_to_place,
-                })
+                (
+                    name,
+                    TransitionRuntime {
+                        t: t,
+                        description: d,
+                        in_edge_to_place: in_edge_to_place,
+                        out_edge_to_place: out_edge_to_place,
+                    },
+                )
             })
-            .collect::<HashMap<_,_>>();
+            .collect::<HashMap<_, _>>();
         Self {
             state: State::make(n.places),
             transitions: transitions,
@@ -127,7 +161,14 @@ impl WorkCluster {
                             let mut in_map = HashMap::new();
                             for p_ty in condition {
                                 in_map.insert(
-                                    (t_run.in_edge_to_place.get_by_right(&p_ty.0).unwrap().clone(), p_ty.1.clone()),
+                                    (
+                                        t_run
+                                            .in_edge_to_place
+                                            .get_by_right(&p_ty.0)
+                                            .unwrap()
+                                            .clone(),
+                                        p_ty.1.clone(),
+                                    ),
                                     self.state.pop(p_ty),
                                 );
                             }
@@ -136,11 +177,23 @@ impl WorkCluster {
                             self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 0.0);
                             t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
                             let elapsed2 = (Instant::now() - start).as_secs_f64();
-                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, elapsed2-elapsed);
-                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed2, elapsed2-elapsed);
+                            self.plot_sink.plot_series_2d(
+                                t_name.clone(),
+                                elapsed,
+                                elapsed2 - elapsed,
+                            );
+                            self.plot_sink.plot_series_2d(
+                                t_name.clone(),
+                                elapsed2,
+                                elapsed2 - elapsed,
+                            );
                             self.plot_sink.plot_series_2d(t_name.clone(), elapsed2, 0.0);
                             for ((e_name, ty), t) in out_map.into_iter() {
-                                let place = t_run.out_edge_to_place.get_by_left(&e_name).unwrap().clone();
+                                let place = t_run
+                                    .out_edge_to_place
+                                    .get_by_left(&e_name)
+                                    .unwrap()
+                                    .clone();
                                 self.state.push(&(place, ty), t);
                             }
                             blocked = false;

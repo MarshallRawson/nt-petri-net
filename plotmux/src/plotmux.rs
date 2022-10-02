@@ -78,7 +78,8 @@ fn make_client(png_path: &String, receiver_names: &Vec<String>) -> TcpStream {
         env::current_exe()
             .expect("Getting current exe")
             .as_path()
-            .parent().unwrap()
+            .parent()
+            .unwrap()
             .join(Path::new("plotmuxui")),
     )
     .arg(format!("{}", png_path))
@@ -111,7 +112,7 @@ impl PlotMux {
         self.receivers.push(receiver.clone());
         PlotSink::make(name.into(), c, (sender, receiver))
     }
-    pub fn make_ready(mut self, png_path: &PathBuf) -> std::thread::JoinHandle::<()> {
+    pub fn make_ready(mut self, png_path: &PathBuf) -> std::thread::JoinHandle<()> {
         self.client = Some(make_client(
             &png_path.as_os_str().to_str().unwrap().into(),
             &self.receiver_names,

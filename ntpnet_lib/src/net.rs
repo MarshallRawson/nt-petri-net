@@ -1,14 +1,14 @@
+use itertools::Itertools;
+use std::any::TypeId;
 use std::collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque};
+use std::env;
+use std::hash::{Hash, Hasher};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::hash::{Hash, Hasher};
-use std::env;
 use tempfile::NamedTempFile;
-use itertools::Itertools;
-use std::io::Write;
-use std::any::TypeId;
 
-use crate::{TransitionMaker, Token};
+use crate::{Token, TransitionMaker};
 
 pub struct Net {
     pub transitions: HashMap<String, TransitionMaker>,
@@ -31,19 +31,17 @@ impl Net {
     }
     pub fn add_transition(mut self, name: &str, t: TransitionMaker) -> Self {
         self.transitions.insert(name.into(), t);
-        self.transition_to_places.insert(name.into(), HashSet::new());
+        self.transition_to_places
+            .insert(name.into(), HashSet::new());
         self
     }
     pub fn add_place(mut self, name: &str) -> Self {
         self.places.insert(name.into(), HashMap::new());
-        self.place_to_transitions.insert(name.into(), HashSet::new());
+        self.place_to_transitions
+            .insert(name.into(), HashSet::new());
         self
     }
-    pub fn set_start_tokens(
-        mut self,
-        place: &str,
-        start_tokens: Vec<Token>,
-    ) -> Self {
+    pub fn set_start_tokens(mut self, place: &str, start_tokens: Vec<Token>) -> Self {
         if let Some(p) = self.places.get_mut(&place.to_string()) {
             for t in start_tokens.into_iter() {
                 let ty = (&*t).type_id();
@@ -64,27 +62,31 @@ impl Net {
             s.insert(transition.into());
         } else {
             self.places.insert(place.into(), HashMap::new());
-            self.place_to_transitions.insert(place.into(), HashSet::new());
+            self.place_to_transitions
+                .insert(place.into(), HashSet::new());
             self.place_to_transitions
                 .get_mut(&place.to_string())
                 .unwrap()
                 .insert(transition.into());
         };
-        self.pt_edges.insert((place.into(), transition.into()), edge.into());
+        self.pt_edges
+            .insert((place.into(), transition.into()), edge.into());
         self
     }
     pub fn transition_to_place(mut self, transition: &str, edge: &str, place: &str) -> Self {
         if let Some(s) = self.transition_to_places.get_mut(&transition.to_string()) {
-                s.insert(place.into());
+            s.insert(place.into());
         } else {
             self.places.insert(place.into(), HashMap::new());
-            self.transition_to_places.insert(transition.into(), HashSet::new());
+            self.transition_to_places
+                .insert(transition.into(), HashSet::new());
             self.transition_to_places
                 .get_mut(&transition.to_string())
                 .unwrap()
                 .insert(place.into());
         }
-        self.tp_edges.insert((transition.into(), place.into()), edge.into());
+        self.tp_edges
+            .insert((transition.into(), place.into()), edge.into());
         self
     }
     fn pseudo_hash(&self) -> u64 {
@@ -108,12 +110,19 @@ impl Net {
         for (pt, e) in self.pt_edges.iter().sorted_by_key(|x| x.0) {
             pt_edges.push((pt.clone(), e.clone()));
         }
-        let mut tp_edges: Vec<((String, String), String)>= vec![];
+        let mut tp_edges: Vec<((String, String), String)> = vec![];
         for (tp, e) in self.tp_edges.iter().sorted_by_key(|x| x.0) {
             tp_edges.push((tp.clone(), e.clone()));
         }
         let mut s = DefaultHasher::new();
-        let t = (transitions, places, transitions_to_places, places_to_transitions, pt_edges, tp_edges);
+        let t = (
+            transitions,
+            places,
+            transitions_to_places,
+            places_to_transitions,
+            pt_edges,
+            tp_edges,
+        );
         t.hash(&mut s);
         s.finish()
     }

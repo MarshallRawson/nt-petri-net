@@ -5,18 +5,19 @@ use crate::common;
 
 pub fn impl_transition_input_tokens_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
-    let unpack = common::struct_field_names_types(&ast).iter().fold(quote!{},
-        |acc, (field, ty)| {
-            let field_str = field.to_string();
-            quote!{
-                #acc
-                #field:
-                    *map.remove_entry(
-                    &(#field_str.to_string(), ::std::any::TypeId::of::<#ty>())
-                ).unwrap().1.downcast::<_>().unwrap(),
-            }
-        }
-    );
+    let unpack =
+        common::struct_field_names_types(&ast)
+            .iter()
+            .fold(quote! {}, |acc, (field, ty)| {
+                let field_str = field.to_string();
+                quote! {
+                    #acc
+                    #field:
+                        *map.remove_entry(
+                        &(#field_str.to_string(), ::std::any::TypeId::of::<#ty>())
+                    ).unwrap().1.downcast::<_>().unwrap(),
+                }
+            });
 
     let field_descriptions = common::field_descriptions_hash_set(&ast);
 

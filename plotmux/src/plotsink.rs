@@ -13,7 +13,7 @@ impl PlotSink {
             name: name,
             color: color,
             pipe: pipe,
-            full_warn: false
+            full_warn: false,
         }
     }
     fn send(&mut self, d: PlotableData) {

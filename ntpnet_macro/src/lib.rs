@@ -23,4 +23,3 @@ pub fn transition_derive(input: TokenStream) -> TokenStream {
 }
 
 mod common;
-

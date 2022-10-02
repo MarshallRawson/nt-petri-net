@@ -84,11 +84,12 @@ impl PlotMuxUi {
             receiver: None,
             source_search: "".into(),
             show_graph: false,
-            graph_image: RetainedImage::from_color_image("graph image",
+            graph_image: RetainedImage::from_color_image(
+                "graph image",
                 egui::ColorImage::from_rgba_unmultiplied(
                     [graph_image.width() as _, graph_image.height() as _],
                     graph_image.as_raw(),
-                )
+                ),
             ),
             selected_source: None,
             mode: None,
@@ -173,7 +174,7 @@ impl eframe::App for PlotMuxUi {
                                             ui.label(t);
                                         }
                                     });
-                            },
+                            }
                             PlotMode::Series2d() => {
                                 ui.horizontal(|ui| {
                                     ui.label("History:");
@@ -199,29 +200,26 @@ impl eframe::App for PlotMuxUi {
                                                             - self.series_2d_history
                                                     })
                                                 {
-                                                    vec.range(start..)
-                                                        .cloned()
-                                                        .collect::<Vec<_>>()
+                                                    vec.range(start..).cloned().collect::<Vec<_>>()
                                                 } else {
                                                     vec![]
                                                 }
                                             };
-                                            let line = plot::Line::new(plot::PlotPoints::Owned(plot_vec))
-                                                .name(name)
-                                                .color(egui::Color32::from_rgb(
-                                                    color.0, color.1, color.2,
-                                                ))
-                                            ;
+                                            let line =
+                                                plot::Line::new(plot::PlotPoints::Owned(plot_vec))
+                                                    .name(name)
+                                                    .color(egui::Color32::from_rgb(
+                                                        color.0, color.1, color.2,
+                                                    ));
                                             plot_ui.line(line);
                                         }
                                     });
-                            },
+                            }
                             PlotMode::Image() => {
                                 ui.centered_and_justified(|ui| {
                                     self.sources[source_idx].plot_image.show(ui);
                                 });
-                            },
-
+                            }
                         },
                         None => (),
                     }
