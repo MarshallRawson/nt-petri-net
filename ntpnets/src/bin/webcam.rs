@@ -1,4 +1,5 @@
 mod camera_reader {
+    use std::time::Instant;
     use image::{RgbImage};
     use plotmux::plotsink::PlotSink;
     use nokhwa::{Camera, CameraFormat, FrameFormat};
@@ -15,7 +16,9 @@ mod camera_reader {
     #[ntpnet_transition(read: Input(E) -> Output(Image))]
     pub struct CameraReader {
         camera: Camera,
-        _p: PlotSink,
+        start_time: Instant,
+        last_time: Option<Instant>,
+        p: PlotSink,
     }
     impl CameraReader {
         pub fn maker(width: u32, height: u32, plotsink: PlotSink) -> TransitionMaker {
@@ -33,7 +36,9 @@ mod camera_reader {
                 cam.open_stream().unwrap();
                 Box::new(Self {
                     camera: cam,
-                    _p: plotsink,
+                    start_time: Instant::now(),
+                    last_time: None,
+                    p: plotsink,
                 })
             })
         }
@@ -41,6 +46,11 @@ mod camera_reader {
             let resolution = self.camera.resolution();
             let frame = self.camera.frame().unwrap();
             let rgb_frame = RgbImage::from_raw(resolution.width(), resolution.height(), frame.to_vec()).unwrap();
+            let now = Instant::now();
+            if let Some(last_time) = self.last_time {
+                self.p.plot_series_2d("frame rate".into(), (now - self.start_time).as_secs_f64(), 1. / (now - last_time).as_secs_f64());
+            }
+            self.last_time = Some(now);
             Output::Image(Image {
                 image: rgb_frame
             })
@@ -49,9 +59,12 @@ mod camera_reader {
 }
 
 mod image_consumer {
-    use image::RgbImage;
+    use image::{RgbImage, GrayImage, ImageBuffer, Luma};
+    use image::buffer::ConvertBuffer;
+    use rustfft::num_complex::Complex;
     use plotmux::plotsink::PlotSink;
     use ntpnet_lib::TransitionMaker;
+    use fft2d::slice::{fft_2d, ifft_2d};
     #[derive(ntpnet_macro::TransitionOutputTokens)]
     struct Out {
         out: (),
@@ -70,11 +83,23 @@ mod image_consumer {
             Box::new(move || Box::new(Self { p: plotsink, }))
         }
         fn consume(&mut self, i: Input) -> Output {
-            match i {
-                Input::Image(Image { image } ) => {
-                    self.p.plot_image(image);
-                }
-            };
+            let image : ImageBuffer<Luma<u8>, Vec<_>>
+                = match i { Input::Image(Image { image } ) => image }.convert();
+            let width = image.width() as usize;
+            let height = image.height() as usize;
+            let mut image_buffer = image
+                .pixels()
+                .map(|p| Complex::new(p[0] as f64 / 255., 0.))
+                .collect::<Vec<_>>()
+            ;
+            fft_2d(width, height, &mut image_buffer);
+            ifft_2d(height, width, &mut image_buffer);
+
+            let fft_coef = 1.0 / (width * height) as f64;
+            for x in image_buffer.iter_mut() { *x *= fft_coef; }
+            let image = image_buffer.iter().map(|c| (c.norm().min(1.0) * 255.0) as u8).collect::<Vec<_>>();
+            let image : RgbImage = GrayImage::from_raw(width as _, height as _, image).unwrap().convert();
+            self.p.plot_image(image.convert());
             Output::Out(Out { out: () })
         }
     }

@@ -12,7 +12,6 @@ use std::net::TcpStream;
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-use std::collections::VecDeque;
 
 struct TcpHandler {
     stream: TcpStream,
@@ -207,14 +206,12 @@ impl eframe::App for PlotMuxUi {
                                                     vec![]
                                                 }
                                             };
-                                            let line = plot::Line::new(plot::PlotPoints::Owned(
-                                                plot_vec,
-                                            ))
-                                            .name(name)
-                                            .color(egui::Color32::from_rgb(
-                                                color.0, color.1, color.2,
-                                            ))
-                                            .width(1.5);
+                                            let line = plot::Line::new(plot::PlotPoints::Owned(plot_vec))
+                                                .name(name)
+                                                .color(egui::Color32::from_rgb(
+                                                    color.0, color.1, color.2,
+                                                ))
+                                            ;
                                             plot_ui.line(line);
                                         }
                                     });

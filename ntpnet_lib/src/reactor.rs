@@ -117,7 +117,6 @@ impl WorkCluster {
     }
     pub fn run(mut self) {
         let start = Instant::now();
-        self.plot_sink.plot_series_2d("reactor".into(), 0.0, 1.0);
         let mut blocked = false;
         while !blocked {
             blocked = true;
@@ -134,16 +133,12 @@ impl WorkCluster {
                             }
                             let mut out_map = HashMap::new();
                             let elapsed = (Instant::now() - start).as_secs_f64();
-                            self.plot_sink.plot_series_2d("reactor".into(), elapsed, 1.0);
-                            self.plot_sink.plot_series_2d("reactor".into(), elapsed, 0.0);
                             self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 0.0);
-                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 1.0);
                             t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
-                            let elapsed = (Instant::now() - start).as_secs_f64();
-                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 1.0);
-                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 0.0);
-                            self.plot_sink.plot_series_2d("reactor".into(), elapsed, 0.0);
-                            self.plot_sink.plot_series_2d("reactor".into(), elapsed, 1.0);
+                            let elapsed2 = (Instant::now() - start).as_secs_f64();
+                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, elapsed2-elapsed);
+                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed2, elapsed2-elapsed);
+                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed2, 0.0);
                             for ((e_name, ty), t) in out_map.into_iter() {
                                 let place = t_run.out_edge_to_place.get_by_left(&e_name).unwrap().clone();
                                 self.state.push(&(place, ty), t);
