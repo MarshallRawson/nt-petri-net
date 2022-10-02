@@ -7,6 +7,7 @@ use std::io::Write;
 use std::net::{TcpListener, TcpStream}; //, IpAddr, Ipv4Addr, Shutdown};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread;
 
 use crate::plotsink::PlotSink;
 
@@ -110,13 +111,14 @@ impl PlotMux {
         self.receivers.push(receiver.clone());
         PlotSink::make(name.into(), c, (sender, receiver))
     }
-    pub fn make_ready(&mut self, png_path: &PathBuf) {
+    pub fn make_ready(mut self, png_path: &PathBuf) -> std::thread::JoinHandle::<()> {
         self.client = Some(make_client(
             &png_path.as_os_str().to_str().unwrap().into(),
             &self.receiver_names,
         ));
+        thread::spawn(move || self.spin())
     }
-    pub fn spin(mut self) {
+    fn spin(mut self) {
         assert!(self.client.is_some());
         |rs: &[PlotReceiver]| -> () {
             let mut sel = Select::new();

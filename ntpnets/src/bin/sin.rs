@@ -30,7 +30,6 @@ mod sin {
 
 use ntpnet_lib::{net::Net, reactor::Reactor};
 use plotmux::plotmux::PlotMux;
-use std::thread;
 
 fn main() {
     let mut plotmux = PlotMux::make();
@@ -43,6 +42,5 @@ fn main() {
     let png = n.png();
     let r = Reactor::make(n, &mut plotmux);
     plotmux.make_ready(&png);
-    thread::spawn(move || plotmux.spin());
     r.run();
 }

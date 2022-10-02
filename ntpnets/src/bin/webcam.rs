@@ -15,7 +15,7 @@ mod camera_reader {
     #[ntpnet_transition(read: Input(E) -> Output(Image))]
     pub struct CameraReader {
         camera: Camera,
-        p: PlotSink,
+        _p: PlotSink,
     }
     impl CameraReader {
         pub fn maker(width: u32, height: u32, plotsink: PlotSink) -> TransitionMaker {
@@ -33,7 +33,7 @@ mod camera_reader {
                 cam.open_stream().unwrap();
                 Box::new(Self {
                     camera: cam,
-                    p: plotsink,
+                    _p: plotsink,
                 })
             })
         }
@@ -82,7 +82,6 @@ mod image_consumer {
 
 use ntpnet_lib::{net::Net, reactor::Reactor};
 use plotmux::plotmux::PlotMux;
-use std::thread;
 
 use clap::Parser;
 #[derive(Parser)]
@@ -115,6 +114,5 @@ fn main() {
     let png = n.png();
     let r = Reactor::make(n, &mut plotmux);
     plotmux.make_ready(&png);
-    thread::spawn(move || plotmux.spin());
     r.run();
 }
