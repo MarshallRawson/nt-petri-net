@@ -205,12 +205,13 @@ impl eframe::App for PlotMuxUi {
                                                 }
                                             };
                                             let line = plot::Line::new(plot::PlotPoints::Owned(
-                                                plot_vec.clone(),
+                                                plot_vec,
                                             ))
                                             .name(name)
                                             .color(egui::Color32::from_rgb(
                                                 color.0, color.1, color.2,
-                                            ));
+                                            ))
+                                            .width(1.5);
                                             plot_ui.line(line);
                                         }
                                     });

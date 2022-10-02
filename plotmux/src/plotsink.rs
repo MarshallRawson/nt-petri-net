@@ -49,7 +49,7 @@ impl PlotSink {
     pub fn plot_series_2d(&mut self, series: String, x: f64, y: f64) {
         self.send(Plotable2d::make(series, x, y));
     }
-    pub fn plot_image(&mut self, image: image::RgbaImage) {
+    pub fn plot_image(&mut self, image: image::RgbImage) {
         self.send(PlotableData::Image(PlotableImage::make(image)));
     }
 }

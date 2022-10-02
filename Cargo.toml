@@ -1,26 +1,11 @@
-[package]
-name = "nt-petri-net"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-[[bin]]
-name = "plotmuxui"
-path = "src/plotmuxui.rs"
+members = [
+    "ntpnet_lib",
+    "ntpnet_macro",
+    "ntpnets",
+    "plotmux"
+]
 
-[[bin]]
-name = "sin"
-path = "src/sin.rs"
-
-[[bin]]
-name = "webcam"
-path = "src/webcam.rs"
-
-[dependencies]
-
-ntpnet_lib = { path = "./ntpnet_lib" }
-ntpnet_macro = { path = "./ntpnet_macro" }
-plotmux = { path = "./plotmux" }
-
-nokhwa = { version = "0.9.4", features = ["input-v4l"] }
-image = "0.24.2"
-clap = { version = "4.0.7", features = ["derive"] }
+[profile.dev]
+opt-level = 3
