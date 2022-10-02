@@ -4,9 +4,27 @@ use eframe::egui::widgets::plot::PlotPoint;
 use egui_extras::image::RetainedImage;
 
 use image::buffer::ConvertBuffer;
-use image::io::Reader as ImageReader;
+use image::Rgba;
+use image::RgbaImage;
 use std::collections::HashMap;
-use std::path::Path;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref DEFAULT_IMAGE : RgbaImage = RgbaImage::from_fn(1920, 1080, |y, x| {
+        let x = x as f64 * (6. / 1079.) - 3.;
+        let y = y as i32 - (1920 - 1080) / 2;
+        let y = y as f64 * (6. / 1079.) - 3.;
+        let left = x.tan().cos().sin();
+        let right = y.tan().cos().sin();
+        if (left - right).abs() < 0.01 {
+            Rgba::<u8>::from([0xE9_u8, 0x45, 0x60, 0xff])
+        } else if left > right {
+            Rgba::<u8>::from([0x53_u8, 0x34, 0x83, 0xff])
+        } else {
+            Rgba::<u8>::from([0x16_u8, 0x21, 0x3E, 0xff])
+        }
+    });
+}
 
 pub struct PlotSource {
     pub name: String,
@@ -17,9 +35,7 @@ pub struct PlotSource {
 }
 impl PlotSource {
     pub fn make(name: String) -> Self {
-        let default_image = ImageReader::open(Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/src/", "battle mech playing acoustic guitar.jpg"))).unwrap();
-        let default_image = default_image.decode().unwrap();
-        let default_image = default_image.thumbnail(1280, 720).into_rgba8();
+        let default_image = &DEFAULT_IMAGE;
         Self {
             color: color(&name),
             name: name,

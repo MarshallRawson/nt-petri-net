@@ -1793,6 +1793,7 @@ dependencies = [
  "eframe",
  "egui_extras",
  "image 0.24.4",
+ "lazy_static",
  "serde",
  "serde_bytes",
  "sha1",
