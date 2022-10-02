@@ -62,7 +62,7 @@ pub struct PlotableImage {
     pub raw: Vec<u8>,
 }
 impl PlotableImage {
-    pub fn make(image: image::RgbaImage) -> Self {
+    pub fn make(image: image::RgbImage) -> Self {
         Self {
             dim: image.dimensions(),
             raw: image.into_raw(),
@@ -77,8 +77,7 @@ fn make_client(png_path: &String, receiver_names: &Vec<String>) -> TcpStream {
         env::current_exe()
             .expect("Getting current exe")
             .as_path()
-            .parent()
-            .unwrap()
+            .parent().unwrap()
             .join(Path::new("plotmuxui")),
     )
     .arg(format!("{}", png_path))

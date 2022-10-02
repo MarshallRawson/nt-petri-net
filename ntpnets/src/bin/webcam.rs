@@ -1,5 +1,5 @@
 mod camera_reader {
-    use image::{RgbaImage, RgbImage};
+    use image::{RgbImage};
     use plotmux::plotsink::PlotSink;
     use nokhwa::{Camera, CameraFormat, FrameFormat};
     use ntpnet_lib::TransitionMaker;
@@ -9,7 +9,7 @@ mod camera_reader {
     }
     #[derive(ntpnet_macro::TransitionOutputTokens)]
     struct Image {
-        image: RgbaImage,
+        image: RgbImage,
     }
     #[derive(ntpnet_macro::Transition)]
     #[ntpnet_transition(read: Input(E) -> Output(Image))]
@@ -41,16 +41,15 @@ mod camera_reader {
             let resolution = self.camera.resolution();
             let frame = self.camera.frame().unwrap();
             let rgb_frame = RgbImage::from_raw(resolution.width(), resolution.height(), frame.to_vec()).unwrap();
-            use image::buffer::ConvertBuffer;
             Output::Image(Image {
-                image: rgb_frame.convert()
+                image: rgb_frame
             })
         }
     }
 }
 
 mod image_consumer {
-    use image::RgbaImage;
+    use image::RgbImage;
     use plotmux::plotsink::PlotSink;
     use ntpnet_lib::TransitionMaker;
     #[derive(ntpnet_macro::TransitionOutputTokens)]
@@ -59,7 +58,7 @@ mod image_consumer {
     }
     #[derive(ntpnet_macro::TransitionInputTokens)]
     struct Image {
-        image: RgbaImage,
+        image: RgbImage,
     }
     #[derive(ntpnet_macro::Transition)]
     #[ntpnet_transition(consume: Input(Image) -> Output(Out))]

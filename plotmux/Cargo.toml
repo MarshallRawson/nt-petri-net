@@ -3,7 +3,12 @@ name = "plotmux"
 version = "0.1.0"
 edition = "2021"
 
-path = "src/*"
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "plotmuxui"
+path = "src/bin/plotmuxui.rs"
 
 [dependencies]
 crossbeam-channel = "0.5.5"

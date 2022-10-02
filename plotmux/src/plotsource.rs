@@ -48,8 +48,7 @@ impl PlotSource {
                 }
             },
             PlotableData::Image(pimage) => {
-                use std::time::Instant;
-                let pimage : image::RgbaImage = image::RgbaImage::from_raw(pimage.dim.0, pimage.dim.1, pimage.raw).unwrap();
+                let pimage : image::RgbaImage = image::RgbImage::from_raw(pimage.dim.0, pimage.dim.1, pimage.raw).unwrap().convert();
                 self.plot_image = RetainedImage::from_color_image("plotmux image",
                     egui::ColorImage::from_rgba_unmultiplied(
                         [pimage.width() as _, pimage.height() as _],
