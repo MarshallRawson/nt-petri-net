@@ -12,6 +12,7 @@ use std::net::TcpStream;
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
+use std::collections::VecDeque;
 
 struct TcpHandler {
     stream: TcpStream,
@@ -192,14 +193,16 @@ impl eframe::App for PlotMuxUi {
                                             let plot_vec = {
                                                 if self.series_2d_history <= 0.0 {
                                                     self.series_2d_history = 0.0;
-                                                    vec.clone()
+                                                    vec.iter().cloned().collect()
                                                 } else if let Some(start) =
                                                     vec.iter().position(|&v| {
-                                                        v.x > vec.last().unwrap().x
+                                                        v.x > vec.back().unwrap().x
                                                             - self.series_2d_history
                                                     })
                                                 {
-                                                    vec[start..].to_vec()
+                                                    vec.range(start..)
+                                                        .cloned()
+                                                        .collect::<Vec<_>>()
                                                 } else {
                                                     vec![]
                                                 }
