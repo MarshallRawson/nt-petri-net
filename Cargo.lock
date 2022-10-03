@@ -1552,6 +1552,7 @@ name = "ntpnet_lib"
 version = "0.1.0"
 dependencies = [
  "bimap",
+ "crossbeam-channel",
  "itertools",
  "plotmux",
  "tempfile",
