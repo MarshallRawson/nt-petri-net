@@ -5,6 +5,7 @@ use crossbeam_channel::{unbounded, Receiver, Sender};
 use eframe;
 use eframe::egui;
 use eframe::egui::widgets::plot;
+use eframe::egui::widget_text::RichText;
 use egui_extras::image::RetainedImage;
 use image::io::Reader as ImageReader;
 use std::io::Read;
@@ -68,6 +69,7 @@ pub struct PlotMuxUi {
     selected_source: Option<usize>,
     mode: Option<PlotMode>,
     series_2d_history: f64,
+    font_size: f32,
 }
 impl PlotMuxUi {
     pub fn make(graph_png_path: &String, port: u32, source_names: Vec<String>) -> Self {
@@ -94,6 +96,7 @@ impl PlotMuxUi {
             selected_source: None,
             mode: None,
             series_2d_history: 0.0,
+            font_size: 15.0,
         }
     }
     pub fn spin(mut self) {
@@ -117,12 +120,16 @@ impl eframe::App for PlotMuxUi {
             self.sources[idx].new_data(new_data);
         }
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.checkbox(&mut self.show_graph, "Graph");
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Font size:").size(self.font_size));
+                ui.add(egui::DragValue::new(&mut self.font_size).clamp_range(5..=100));
+                ui.checkbox(&mut self.show_graph, RichText::new("Graph").size(self.font_size));
+            });
             if self.show_graph {
                 self.graph_image.show(ui);
             } else {
                 ui.horizontal(|ui| {
-                    ui.label("Source: ");
+                    ui.label(RichText::new("Source: ").size(self.font_size));
                     ui.text_edit_singleline(&mut self.source_search);
                     let possible_source_names = self
                         .sources
@@ -138,7 +145,7 @@ impl eframe::App for PlotMuxUi {
                         .collect::<Vec<(usize, String)>>();
                     let buttons = possible_source_names
                         .iter()
-                        .map(|(i, s)| (*i, ui.button(s).clicked()))
+                        .map(|(i, s)| (*i, ui.button(RichText::new(s).size(self.font_size)).clicked()))
                         .collect::<Vec<(usize, bool)>>();
                     for (i, clicked) in buttons.iter() {
                         if *clicked {
@@ -148,14 +155,14 @@ impl eframe::App for PlotMuxUi {
                     }
                 });
                 if let Some(source_idx) = self.selected_source {
-                    ui.heading(&self.sources[source_idx].name);
+                    ui.heading(RichText::new(&self.sources[source_idx].name).size(self.font_size));
                     let mut text = None;
                     let mut series_2d = None;
                     let mut image = None;
                     ui.horizontal(|ui| {
-                        text = Some(ui.button("text"));
-                        series_2d = Some(ui.button("series_2d"));
-                        image = Some(ui.button("image"));
+                        text = Some(ui.button(RichText::new("text").size(self.font_size)));
+                        series_2d = Some(ui.button(RichText::new("series_2d").size(self.font_size)));
+                        image = Some(ui.button(RichText::new("image").size(self.font_size)));
                     });
                     if text.unwrap().clicked() {
                         self.mode = Some(PlotMode::Text());
@@ -171,13 +178,13 @@ impl eframe::App for PlotMuxUi {
                                     .stick_to_bottom(true)
                                     .show(ui, |ui| {
                                         for t in &self.sources[source_idx].text {
-                                            ui.label(t);
+                                            ui.label(RichText::new(t));
                                         }
                                     });
                             }
                             PlotMode::Series2d() => {
                                 ui.horizontal(|ui| {
-                                    ui.label("History:");
+                                    ui.label(RichText::new("History:"));
                                     ui.add(
                                         egui::DragValue::new(&mut self.series_2d_history)
                                             .speed(1.0),
