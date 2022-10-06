@@ -191,7 +191,6 @@ impl eframe::App for PlotMuxUi {
                                     );
                                 });
                                 plot::Plot::new("plot")
-                                    .view_aspect(2.0)
                                     .legend(plot::Legend::default())
                                     .show(ui, |plot_ui| {
                                         for (name, (color, vec)) in
