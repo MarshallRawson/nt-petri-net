@@ -30,44 +30,73 @@ pub type PlotSender = Sender<PlotableData>;
 #[derive(Serialize, Deserialize, Clone)]
 pub enum PlotableData {
     String(PlotableString),
+    InitSeriesPlot2d(String),
+    InitSeries2d(InitSeries2d),
     Series2d(Plotable2d),
+    InitImagePlot(String),
     Image(PlotableImage),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PlotableString {
+    pub channel: Option<String>,
     pub s: String,
 }
-impl From<&str> for PlotableData {
-    fn from(item: &str) -> PlotableData {
-        PlotableData::String(PlotableString { s: item.into() })
+impl PlotableString {
+    pub fn make(channel: Option<&str>, s: &str) -> PlotableData {
+        let channel = match channel {
+            Some(c) => Some(c.to_string()),
+            None => None,
+        };
+        PlotableData::String(PlotableString { channel: channel, s: s.into() })
     }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Plotable2d {
+pub struct InitSeries2d {
+    pub channel: usize,
     pub series: String,
+}
+impl InitSeries2d {
+    pub fn make(channel: usize, series: &str) -> PlotableData {
+        PlotableData::InitSeries2d(Self {
+            channel: channel,
+            series: series.into(),
+        })
+    }
+}
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Plotable2d {
+    pub channel: usize,
+    pub series: usize,
     pub x: f64,
     pub y: f64,
 }
 impl Plotable2d {
-    pub fn make(series: String, x: f64, y: f64) -> PlotableData {
-        PlotableData::Series2d(Plotable2d { series, x, y })
+    pub fn make(channel: usize, series: usize, x: f64, y: f64) -> PlotableData {
+        PlotableData::Series2d(Plotable2d {
+            channel: channel,
+            series: series,
+            x: x,
+            y: y
+        })
     }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PlotableImage {
+    pub channel: usize,
     pub dim: (u32, u32),
     #[serde(with = "serde_bytes")]
     pub raw: Vec<u8>,
 }
 impl PlotableImage {
-    pub fn make(image: image::RgbImage) -> Self {
-        Self {
+    pub fn make(channel: usize, image: image::RgbImage) -> PlotableData {
+        PlotableData::Image(Self {
+            channel: channel,
             dim: image.dimensions(),
             raw: image.into_raw(),
-        }
+        })
     }
 }
 
