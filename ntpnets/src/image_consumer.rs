@@ -24,8 +24,8 @@ impl ImageConsumer {
     fn consume(&mut self, i: Input) -> Output {
         let image: GrayImage = match i {
             Input::Image(Image { image }) => image,
-        }
-        .convert();
+        }.convert();
+        let original_image = &image;
         let width = image.width() as usize;
         let height = image.height() as usize;
         let mut image_buffer = image
@@ -46,7 +46,8 @@ impl ImageConsumer {
         let image: RgbImage = GrayImage::from_raw(width as _, height as _, image)
             .unwrap()
             .convert();
-        self.p.plot_image(image.convert());
+        self.p.plot_image("ifft(fft(image))", image.convert());
+        self.p.plot_image("original image", original_image.convert());
         Output::Out(Out { out: () })
     }
 }

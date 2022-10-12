@@ -19,9 +19,10 @@ mod sin {
             let t = match f {
                 Input::Time(Time { t }) => t,
             };
-            self.p.plot_series_2d("sin(t)".into(), t, t.sin());
+            self.p.plot_series_2d("", "sin(t)".into(), t, t.sin());
+            self.p.println2("t", &format!("{}", t));
+            self.p.println2("sin(t)", &format!("{}", t.sin()));
             thread::sleep(time::Duration::from_millis(10));
-
             Output::Time(Time { t: t + 0.01 })
         }
     }

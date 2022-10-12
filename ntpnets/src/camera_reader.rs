@@ -49,7 +49,8 @@ impl CameraReader {
         let now = Instant::now();
         if let Some(last_time) = self.last_time {
             self.p.plot_series_2d(
-                "frame rate".into(),
+                "",
+                "frame rate",
                 (now - self.start_time).as_secs_f64(),
                 1. / (now - last_time).as_secs_f64(),
             );

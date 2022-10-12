@@ -151,6 +151,7 @@ impl WorkCluster {
     }
     pub fn run(mut self) {
         let start = Instant::now();
+        self.plot_sink.plot_series_2d("reactor timing", "reactor", 0.0, 1.0);
         let mut blocked = false;
         while !blocked {
             blocked = true;
@@ -174,20 +175,16 @@ impl WorkCluster {
                             }
                             let mut out_map = HashMap::new();
                             let elapsed = (Instant::now() - start).as_secs_f64();
-                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed, 0.0);
+                            self.plot_sink.plot_series_2d("reactor timing", "reactor", elapsed, 1.0);
+                            self.plot_sink.plot_series_2d("reactor timing", "reactor", elapsed, 0.0);
+                            self.plot_sink.plot_series_2d("transition timing", &t_name, elapsed, 0.0);
                             t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
                             let elapsed2 = (Instant::now() - start).as_secs_f64();
-                            self.plot_sink.plot_series_2d(
-                                t_name.clone(),
-                                elapsed,
-                                elapsed2 - elapsed,
-                            );
-                            self.plot_sink.plot_series_2d(
-                                t_name.clone(),
-                                elapsed2,
-                                elapsed2 - elapsed,
-                            );
-                            self.plot_sink.plot_series_2d(t_name.clone(), elapsed2, 0.0);
+                            self.plot_sink.plot_series_2d("transition timing", &t_name, elapsed, elapsed2 - elapsed);
+                            self.plot_sink.plot_series_2d("transition timing", &t_name, elapsed2, elapsed2 - elapsed);
+                            self.plot_sink.plot_series_2d("transition timing", &t_name, elapsed2, 0.0);
+                            self.plot_sink.plot_series_2d("reactor timing", "reactor", elapsed2, 0.0);
+                            self.plot_sink.plot_series_2d("reactor timing", "reactor", elapsed2, 1.0);
                             for ((e_name, ty), t) in out_map.into_iter() {
                                 let place = t_run
                                     .out_edge_to_place
