@@ -111,7 +111,7 @@ To find the maximal concurrent execution of a Petri net, we find the maximum num
 
 `cargo build`
 
-### Running an Example
+### Running a Partially Ordered Petri Net
 *(Only verified on Ubuntu 20.04)*
 
 In the root of the repo, run `cargo run --bin webcam -- --width 1280 --height 720`
@@ -126,7 +126,7 @@ You will be presented with a window named `PlotMux`. PlotMux is the supported de
 
 Select the `Graph` checkbox.
 
-![](./docs/webcam.graph.png)
+![](./docs/webcam/graph.png)
 
 This is a render of the Petri net specified in `webcam.rs`.
 
@@ -136,7 +136,7 @@ Select the `camera_reader` source, then select `series_2d`.
 
 ![](./docs/webcam/camera_reader.png)
 
-This is a plot of the frame rate vs time since initialization comming from the `camera_reader` transition.
+This is a plot of the frame rate vs time since initialization coming from the `camera_reader` transition.
 
 Select the `image_consumer` source.
 
@@ -153,3 +153,45 @@ This is the debug output from the work cluster in reactor, which is executing th
 These 2 series: `∫ camera_reader`, `∫ image_consumer` represent the total time spent executing each corresponding transition. `∫ nonblocking` indicates how much time has been spent in the work cluster itself arbitrating the partial ordering execution of the transitions.
 
 To stop the program, hit `Ctrl + C` in the terminal where the program was run.
+
+### Running a Concurrent Petri Net
+
+*(Only verified on Ubuntu 20.04)*
+
+In the root of the repo, run `cargo run --bin webcam2 -- --width 1280 --height 720`
+
+*(NOTE: for 1080p webcams, use `cargo run --bin webcam2 -- --width 1920 --height 1080`)*
+
+This will run the executable target `webcam`, which corresponds to the `ntpnets/src/bin/webcam2.rs` source file.
+
+You will again be presented with a PlotMux window, however this one will have `{"camera_reader"}` and `{"image_consumer"}` instead of `work_cluster0`. This is because this Petri net has been partitioned into two work clusters.
+
+Select the `Graph` checkbox.
+
+![](./docs/webcam2/graph.png)
+
+This is a render of the Petri net specified in `webcam2.rs`.
+
+Notice how the graph is partitioned by 2 boxes. Each box corresponds to a work cluster.
+
+Unselect the `Graph` checkbox.
+
+Select the `{"camera_reader"}` source, then select `series_2d`.
+
+![](./docs/webcam2/camera_reader.png)
+
+This plot shows us that ~2/3 of the time of this work cluster is spent in the `camera_reader` transition and ~1/3 of the time is spent blocked on waiting for other work transitions.
+
+Select the `{"image_consumer"}` source, then select `series_2d`.
+
+![](./docs/webcam2/image_consumer.png)
+
+This plot shows us that ~1005 of the time of this work cluster is spent in the `image_consumer` transition.
+
+These plots put together show us that the `image_consumer` transition is a bottleneck in the system.
+
+Also, select the `camera_reader` source, then select `series_2d`.
+
+![](./docs/webcam2/fps.png)
+
+And notice the higher frame rate than was seen with the partially ordered `webcam` target.
