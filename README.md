@@ -4,7 +4,7 @@ A graph based concurrent middle ware written in Rust.
 
 This repository aims to implement colored non-deterministically transitioning Petri nets specified in [Petri Nets for Concurrent Programming](https://arxiv.org/abs/2208.02900).
 
-## Intro
+## Theory
 
 ### What is a Petri Net?
 
@@ -100,3 +100,44 @@ Work clusters are partitions in a Petri net transitions. Transitions inside a wo
 ### Solving for Maximal Concurrency
 
 To find the maximal concurrent execution of a Petri net, we find the maximum number of valid work clusters.
+
+## Practice
+
+### Clone
+
+`git clone https://github.com/MarshallRawson/nt-petri-net.git`
+
+### Build
+
+`cargo build`
+
+### Running an Example
+*(Only verified on Ubuntu 20.04)*
+
+In the root of the repo, run `cargo run --bin webcam -- --width 1280 --height 720`
+
+*(NOTE: for 1080p webcams, use `cargo run --bin webcam -- --width 1920 --height 1080`)*
+
+This will run the executable target `webcam`, which corresponds to the `ntpnets/src/bin/webcam.rs` source file.
+
+You will be presented with a window named `PlotMux`. PlotMux is the supported debugging application I made to multiplex realtime debugging info, such as 2d plots, images, and text.
+
+![](./docs/webcam/plotmux_home.png)
+
+Select the `Graph` checkbox.
+
+![](./docs/webcam.graph.png)
+
+This is a render of the Petri net specified in `webcam.rs`.
+
+Unselect the `Graph` checkbox.
+
+Select the `camera_reader` source, then select `series_2d`.
+
+![](./docs/webcam/camera_reader.png)
+
+This is a plot of the frame rate vs time since initialization.
+
+Select the `image_consumer` source.
+
+
