@@ -136,8 +136,20 @@ Select the `camera_reader` source, then select `series_2d`.
 
 ![](./docs/webcam/camera_reader.png)
 
-This is a plot of the frame rate vs time since initialization.
+This is a plot of the frame rate vs time since initialization comming from the `camera_reader` transition.
 
 Select the `image_consumer` source.
 
+![](./docs/webcam/image_consumer.png)
 
+You are presented with 2 updating gray scale images: `ifft(fft(image))` and `original`. These are the debug outputs for the `image_consumer` transition. `image_consumer` is doing and FFT and an Inverse FFT on the image coming from `camera_reader`, since these images are the same, we can be certain that the FFT and IFFT are correct.
+
+Select the `work_cluster0` source, then select `series_2d`.
+
+This is the debug output from the work cluster in reactor, which is executing the Petri net (currently in a single thread).
+
+![](./docs/webcam/work_cluster0.png)
+
+These 2 series: `∫ camera_reader`, `∫ image_consumer` represent the total time spent executing each corresponding transition. `∫ nonblocking` indicates how much time has been spent in the work cluster itself arbitrating the partial ordering execution of the transitions.
+
+To stop the program, hit `Ctrl + C` in the terminal where the program was run.
