@@ -1,0 +1,25 @@
+#!/bin/bash
+set -euo pipefail
+
+mkdir -p target/data
+cd target/data
+DOWNLOADS="http://web.archive.org/web/20220703153040/http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
+http://web.archive.org/web/20220703153044/http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
+http://web.archive.org/web/20220703153031/http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz
+http://web.archive.org/web/20220703153041/http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
+"
+
+for url in $DOWNLOADS; do
+  data=${url##*\/}
+  unzipped=${data%$*.gz}
+  if [ -f $unzipped ]; then
+    echo "already have $unzipped, skipping";
+  else
+    if [ -f $data ]; then
+      echo "already have $data, skipping download";
+    else
+      wget $url
+    fi
+    gunzip $unzipped
+  fi
+done
