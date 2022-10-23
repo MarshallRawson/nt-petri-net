@@ -134,13 +134,13 @@ Unselect the `Graph` checkbox.
 
 Select the `camera_reader` source, then select `series_2d`.
 
-![](./docs/webcam/camera_reader.png)
+![](./docs/webcam/image_consumer.png)
 
 This is a plot of the frame rate vs time since initialization coming from the `camera_reader` transition.
 
 Select the `image_consumer` source.
 
-![](./docs/webcam/image_consumer.png)
+![](./docs/webcam/camera_reader.png)
 
 You are presented with 2 updating gray scale images: `ifft(fft(image))` and `original`. These are the debug outputs for the `image_consumer` transition. `image_consumer` is doing and FFT and an Inverse FFT on the image coming from `camera_reader`, since these images are the same, we can be certain that the FFT and IFFT are correct.
 
