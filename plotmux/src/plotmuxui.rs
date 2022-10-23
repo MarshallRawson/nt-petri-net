@@ -65,7 +65,7 @@ pub struct PlotMuxUi {
     port: u32,
     receiver: Option<Receiver<(usize, PlotableData)>>,
     source_search: String,
-    graph_image: RetainedImage,
+    graph_image: Option<RetainedImage>,
     show_graph: bool,
     selected_source: Option<usize>,
     mode: Option<PlotMode>,
@@ -73,27 +73,32 @@ pub struct PlotMuxUi {
     font_size: f32,
 }
 impl PlotMuxUi {
-    pub fn make(graph_png_path: &String, port: u32, source_names: Vec<String>) -> Self {
+    pub fn make(graph_png_path: Option<&String>, port: u32, source_names: Vec<String>) -> Self {
         let mut sources = Vec::<_>::new();
         for name in &source_names {
             sources.push(PlotSource::make(name.clone()));
         }
-        let graph_image = ImageReader::open(graph_png_path).unwrap();
-        let graph_image = graph_image.decode().unwrap();
-        let graph_image = graph_image.as_rgba8().unwrap();
-        PlotMuxUi {
-            sources: sources,
-            port: port,
-            receiver: None,
-            source_search: "".into(),
-            show_graph: false,
-            graph_image: RetainedImage::from_color_image(
+        let graph_image = if let Some(graph_png_path) = graph_png_path {
+            let graph_image = ImageReader::open(graph_png_path).unwrap();
+            let graph_image = graph_image.decode().unwrap();
+            let graph_image = graph_image.as_rgba8().unwrap();
+            Some(RetainedImage::from_color_image(
                 "graph image",
                 egui::ColorImage::from_rgba_unmultiplied(
                     [graph_image.width() as _, graph_image.height() as _],
                     graph_image.as_raw(),
                 ),
-            ),
+            ))
+        } else {
+            None
+        };
+        PlotMuxUi {
+            sources: sources,
+            port: port,
+            receiver: None,
+            source_search: "".into(),
+            graph_image: graph_image,
+            show_graph: false,
             selected_source: None,
             mode: None,
             series_2d_history: 0.0,
@@ -131,7 +136,9 @@ impl eframe::App for PlotMuxUi {
                 ui.checkbox(&mut self.show_graph, rich_text("Graph"));
             });
             if self.show_graph {
-                self.graph_image.show(ui);
+                if let Some(graph_image) = &self.graph_image {
+                    graph_image.show(ui);
+                }
             } else {
                 ui.horizontal(|ui| {
                     ui.label(rich_text("Source: "));

@@ -1,14 +1,19 @@
 use plotmux::plotmuxui::PlotMuxUi;
-use std::collections::VecDeque;
-use std::env;
+
+use clap::Parser;
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(long)]
+    graph_png: Option<String>,
+    #[arg(long)]
+    port: u32,
+    #[arg(long)]
+    sources: Vec<String>,
+}
 
 fn main() {
-    let mut args: VecDeque<String> = env::args().collect::<VecDeque<String>>();
-    args.pop_front();
-    let graph_png_path = args[0].parse::<String>().expect("GRAPH_PNG arg malformed!");
-    args.pop_front();
-    let port = args[0].parse().expect("PORT arg malformed!");
-    println!("using png: {} and port: {}", graph_png_path, port);
-    args.pop_front();
-    PlotMuxUi::make(&graph_png_path, port, args.into()).spin();
+    let args = Args::parse();
+    println!("using png: {:?} and port: {}", args.graph_png, args.port);
+    PlotMuxUi::make(args.graph_png.as_ref(), args.port, args.sources).spin();
 }
