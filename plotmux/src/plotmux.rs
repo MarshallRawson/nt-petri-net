@@ -100,22 +100,26 @@ impl PlotableImage {
     }
 }
 
-fn make_client(png_path: &String, receiver_names: &Vec<String>) -> TcpStream {
+fn make_client(png_path: Option<&PathBuf>, receiver_names: &Vec<String>) -> TcpStream {
     let listener = TcpListener::bind("localhost:0").unwrap();
     let port = listener.local_addr().unwrap().port();
-    Command::new(
+    let mut cmd = Command::new(
         env::current_exe()
             .expect("Getting current exe")
             .as_path()
             .parent()
             .unwrap()
             .join(Path::new("plotmuxui")),
-    )
-    .arg(format!("{}", png_path))
-    .arg(format!("{}", port))
-    .args(receiver_names)
-    .spawn()
-    .expect("starting plotmuxui");
+    );
+    if let Some(png_path) = png_path {
+        let png_path = &png_path.as_os_str().to_str().unwrap().to_string();
+        cmd.arg("--graph-png").arg(format!("{}", png_path));
+    }
+    cmd.arg("--port")
+        .arg(format!("{}", port))
+        .args(receiver_names.iter().flat_map(|s| ["--sources".to_string(), s.clone()]))
+        .spawn()
+        .expect("starting plotmuxui");
     let (client, socket) = listener.accept().unwrap();
     assert_eq!("127.0.0.1".parse(), Ok(socket.ip()));
     client
@@ -141,9 +145,9 @@ impl PlotMux {
         self.receivers.push(receiver.clone());
         PlotSink::make(name.into(), c, (sender, receiver))
     }
-    pub fn make_ready(mut self, png_path: &PathBuf) -> std::thread::JoinHandle<()> {
+    pub fn make_ready(mut self, png_path: Option<&PathBuf>) -> std::thread::JoinHandle<()> {
         self.client = Some(make_client(
-            &png_path.as_os_str().to_str().unwrap().into(),
+            png_path,
             &self.receiver_names,
         ));
         thread::spawn(move || self.spin())

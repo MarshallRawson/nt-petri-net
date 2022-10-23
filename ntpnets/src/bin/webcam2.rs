@@ -43,6 +43,6 @@ fn main() {
         vec![HashSet::from(["camera_reader".into()]), HashSet::from(["image_consumer".into()])],
         &mut plotmux
     );
-    plotmux.make_ready(&multi_reactor.png());
+    plotmux.make_ready(Some(&multi_reactor.png()));
     multi_reactor.run();
 }
