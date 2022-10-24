@@ -8,12 +8,10 @@ use std::collections::HashSet;
 use image::ImageBuffer;
 use clap::Parser;
 #[derive(Parser)]
-#[command(author, version, about, long_about = None, disable_help_flag = true)]
+#[command(author, version, about, long_about = None)]
 struct Args {
-    #[arg(short, long)]
-    width: u32,
-    #[arg(short, long)]
-    height: u32,
+    #[arg(short, long, default_value_t = 30)]
+    fps: u32,
 }
 
 fn main() {
@@ -26,8 +24,7 @@ fn main() {
         .add_transition(
             "camera_reader",
             CameraReader::maker(
-                args.width,
-                args.height,
+                args.fps,
                 plotmux.add_plot_sink("camera_reader"),
             ),
         )
@@ -35,7 +32,7 @@ fn main() {
             "image_consumer",
             ImageConsumer::maker(plotmux.add_plot_sink("image_consumer")),
         )
-        .set_start_tokens("Image", vec![Box::new(ImageBuffer::from_pixel(args.width, args.height, image::Rgb([0_u8, 0, 0])))])
+        .set_start_tokens("Image", vec![Box::new(ImageBuffer::from_pixel(1, 1, image::Rgb([0_u8, 0, 0])))])
         .transition_to_place("camera_reader", "image", "Image")
         .place_to_transition("Image", "image", "image_consumer")
         .transition_to_place("image_consumer", "out", "E");

@@ -114,9 +114,9 @@ To find the maximal concurrent execution of a Petri net, we find the maximum num
 ### Running a Partially Ordered Petri Net
 *(Only verified on Ubuntu 20.04)*
 
-In the root of the repo, run `cargo run --bin webcam -- --width 1280 --height 720`
+In the root of the repo, run `cargo run --bin webcam`
 
-*(NOTE: for 1080p webcams, use `cargo run --bin webcam -- --width 1920 --height 1080`)*
+*(NOTE: for 1080p webcams, use `cargo run --bin webcam`)*
 
 This will run the executable target `webcam`, which corresponds to the `ntpnets/src/bin/webcam.rs` source file.
 
@@ -158,9 +158,9 @@ To stop the program, hit `Ctrl + C` in the terminal where the program was run.
 
 *(Only verified on Ubuntu 20.04)*
 
-In the root of the repo, run `cargo run --bin webcam2 -- --width 1280 --height 720`
+In the root of the repo, run `cargo run --bin webcam2`
 
-*(NOTE: for 1080p webcams, use `cargo run --bin webcam2 -- --width 1920 --height 1080`)*
+*(NOTE: for 1080p webcams, use `cargo run --bin webcam2`)*
 
 This will run the executable target `webcam`, which corresponds to the `ntpnets/src/bin/webcam2.rs` source file.
 
