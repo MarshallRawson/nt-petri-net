@@ -1,5 +1,5 @@
 use image::RgbImage;
-use nokhwa::{Camera, CameraFormat, FrameFormat};
+use rscam::{Camera, Config};
 use ntpnet_lib::TransitionMaker;
 use plotmux::plotsink::PlotSink;
 use std::time::Instant;
@@ -20,19 +20,14 @@ pub struct CameraReader {
     p: PlotSink,
 }
 impl CameraReader {
-    pub fn maker(width: u32, height: u32, plotsink: PlotSink) -> TransitionMaker {
+    pub fn maker(fps: u32, plotsink: PlotSink) -> TransitionMaker {
         Box::new(move || {
-            let mut cam = Camera::new(
-                0,
-                Some(CameraFormat::new_from(
-                    width,
-                    height,
-                    FrameFormat::MJPEG,
-                    30,
-                )),
-            )
-            .unwrap();
-            cam.open_stream().unwrap();
+            let mut cam = Camera::new("/dev/video0").unwrap();
+            cam.start(&Config {
+                interval: (1, fps),
+                format: b"RGB3",
+                ..Default::default()
+            }).unwrap();
             Box::new(Self {
                 camera: cam,
                 start_time: Instant::now(),
@@ -42,10 +37,9 @@ impl CameraReader {
         })
     }
     fn read(&mut self, _: Input) -> Output {
-        let resolution = self.camera.resolution();
-        let frame = self.camera.frame().unwrap();
+        let frame = self.camera.capture().unwrap();
         let rgb_frame =
-            RgbImage::from_raw(resolution.width(), resolution.height(), frame.to_vec()).unwrap();
+            RgbImage::from_raw(frame.resolution.0, frame.resolution.1, (&frame[..]).to_vec()).unwrap();
         let now = Instant::now();
         if let Some(last_time) = self.last_time {
             self.p.plot_series_2d(

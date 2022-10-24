@@ -8,10 +8,8 @@ use clap::Parser;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, disable_help_flag = true)]
 struct Args {
-    #[arg(short, long)]
-    width: u32,
-    #[arg(short, long)]
-    height: u32,
+    #[arg(short, long, default_value_t = 30)]
+    fps: u32,
 }
 
 fn main() {
@@ -24,8 +22,7 @@ fn main() {
         .add_transition(
             "camera_reader",
             CameraReader::maker(
-                args.width,
-                args.height,
+                args.fps,
                 plotmux.add_plot_sink("camera_reader"),
             ),
         )
