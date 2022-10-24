@@ -9,6 +9,9 @@ use eframe::egui::widgets::plot;
 use eframe::egui::widget_text::RichText;
 use egui_extras::image::RetainedImage;
 use image::io::Reader as ImageReader;
+use image::buffer::ConvertBuffer;
+use image::RgbaImage;
+use image::DynamicImage::{ImageRgba8,ImageRgb8};
 use std::io::Read;
 use std::net::TcpStream;
 use std::thread;
@@ -79,14 +82,18 @@ impl PlotMuxUi {
             sources.push(PlotSource::make(name.clone()));
         }
         let graph_image = if let Some(graph_png_path) = graph_png_path {
-            let graph_image = ImageReader::open(graph_png_path).unwrap();
-            let graph_image = graph_image.decode().unwrap();
-            let graph_image = graph_image.as_rgba8().unwrap();
+            let graph_image0 = ImageReader::open(graph_png_path).unwrap();
+            let graph_image1 = graph_image0.decode().unwrap();
+            let graph_image2 : RgbaImage = match graph_image1 {
+                ImageRgba8(image) => image,
+                ImageRgb8(image) => image.convert(),
+                _ => panic!(),
+            };
             Some(RetainedImage::from_color_image(
                 "graph image",
                 egui::ColorImage::from_rgba_unmultiplied(
-                    [graph_image.width() as _, graph_image.height() as _],
-                    graph_image.as_raw(),
+                    [graph_image2.width() as _, graph_image2.height() as _],
+                    graph_image2.as_raw(),
                 ),
             ))
         } else {
