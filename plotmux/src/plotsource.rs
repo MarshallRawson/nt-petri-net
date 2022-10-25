@@ -43,6 +43,9 @@ impl PlotSource {
     }
     pub fn new_data(&mut self, d: PlotableData) {
         match d {
+            PlotableData::InitSource(s) => {
+                *self = Self::make(s);
+            },
             PlotableData::String(s) => {
                 let color_channel = match s.channel {
                     None => None,

@@ -29,6 +29,7 @@ pub type PlotSender = Sender<PlotableData>;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum PlotableData {
+    InitSource(String),
     String(PlotableString),
     InitSeriesPlot2d(String),
     InitSeries2d(InitSeries2d),
@@ -100,33 +101,45 @@ impl PlotableImage {
     }
 }
 
-fn make_client(png_path: Option<&PathBuf>, receiver_names: &Vec<String>) -> TcpStream {
-    let listener = TcpListener::bind("localhost:0").unwrap();
-    let port = listener.local_addr().unwrap().port();
-    let mut cmd = Command::new(
-        env::current_exe()
-            .expect("Getting current exe")
-            .as_path()
-            .parent()
-            .unwrap()
-            .join(Path::new("plotmuxui")),
-    );
-    if let Some(png_path) = png_path {
-        let png_path = &png_path.as_os_str().to_str().unwrap().to_string();
-        cmd.arg("--graph-png").arg(format!("{}", png_path));
+pub enum ClientMode {
+    Local(),
+    Remote(String),
+}
+
+fn make_client(png_path: Option<&PathBuf>, mode: ClientMode) -> TcpStream {
+    let listener = match &mode {
+        ClientMode::Local() => TcpListener::bind("localhost:0").unwrap(),
+        ClientMode::Remote(addr) => TcpListener::bind(addr).unwrap(),
+    };
+    match mode {
+        ClientMode::Local() => {
+            let port = listener.local_addr().unwrap().port();
+            let mut cmd = Command::new(
+                env::current_exe()
+                    .expect("Getting current exe")
+                    .as_path()
+                    .parent()
+                    .unwrap()
+                    .join(Path::new("plotmuxui")),
+            );
+            if let Some(png_path) = png_path {
+                let png_path = &png_path.as_os_str().to_str().unwrap().to_string();
+                cmd.arg("--graph-png").arg(format!("{}", png_path));
+            }
+            cmd.arg("--addr")
+                .arg(format!("localhost:{}", port))
+                .spawn()
+                .expect("starting plotmuxui");
+        },
+        ClientMode::Remote(addr) => {
+            println!("cargo run --bin plotmuxui -- --addr {}", addr);
+        },
     }
-    cmd.arg("--port")
-        .arg(format!("{}", port))
-        .args(receiver_names.iter().flat_map(|s| ["--sources".to_string(), s.clone()]))
-        .spawn()
-        .expect("starting plotmuxui");
-    let (client, socket) = listener.accept().unwrap();
-    assert_eq!("127.0.0.1".parse(), Ok(socket.ip()));
+    let (client, _socket) = listener.accept().unwrap();
     client
 }
 
 pub struct PlotMux {
-    receiver_names: Vec<String>,
     receivers: Vec<PlotReceiver>,
     client: Option<TcpStream>,
 }
@@ -134,26 +147,22 @@ impl PlotMux {
     pub fn make() -> Self {
         PlotMux {
             receivers: vec![],
-            receiver_names: vec![],
             client: None,
         }
     }
     pub fn add_plot_sink(&mut self, name: &str) -> PlotSink {
         let (sender, receiver) = bounded(100);
         let c = color(&name);
-        self.receiver_names.push(name.into());
         self.receivers.push(receiver.clone());
         PlotSink::make(name.into(), c, (sender, receiver))
     }
-    pub fn make_ready(mut self, png_path: Option<&PathBuf>) -> std::thread::JoinHandle<()> {
+    pub fn make_ready(mut self, png_path: Option<&PathBuf>, client: ClientMode) -> std::thread::JoinHandle<()> {
         self.client = Some(make_client(
-            png_path,
-            &self.receiver_names,
+            png_path, client
         ));
         thread::spawn(move || self.spin())
     }
     fn spin(mut self) {
-        assert!(self.client.is_some());
         |rs: &[PlotReceiver]| -> () {
             let mut sel = Select::new();
             for r in rs {

@@ -2,14 +2,16 @@ use ntpnets::camera_reader::CameraReader;
 use ntpnets::image_consumer::ImageConsumer;
 
 use ntpnet_lib::{net::Net, reactor::Reactor};
-use plotmux::plotmux::PlotMux;
+use plotmux::plotmux::{PlotMux, ClientMode};
 
 use clap::Parser;
 #[derive(Parser)]
-#[command(author, version, about, long_about = None, disable_help_flag = true)]
+#[command(author, version, about, long_about = None)]
 struct Args {
     #[arg(short, long, default_value_t = 30)]
     fps: u32,
+    #[arg(short, long)]
+    remote_plotmux: Option<String>,
 }
 
 fn main() {
@@ -35,6 +37,11 @@ fn main() {
         .transition_to_place("image_consumer", "out", "E");
     let png = n.png();
     let r = Reactor::make(n, &mut plotmux);
-    plotmux.make_ready(Some(&png));
+    let plotmux_mode = if let Some(addr) = args.remote_plotmux {
+        ClientMode::Remote(addr)
+    } else {
+        ClientMode::Local()
+    };
+    plotmux.make_ready(Some(&png), plotmux_mode);
     r.run();
 }

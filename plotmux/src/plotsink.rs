@@ -6,6 +6,7 @@ use std::collections::HashMap;
 pub struct PlotSink {
     name: (Color, String),
     pipe: (PlotSender, PlotReceiver),
+    first_send: bool,
     full_warn: bool,
     series_plots_2d: HashMap<String, (usize, HashMap<String, usize>)>,
     image_plots: HashMap<String, usize>,
@@ -15,12 +16,17 @@ impl PlotSink {
         Self {
             name: (color, name),
             pipe: pipe,
+            first_send: true,
             full_warn: false,
             series_plots_2d: HashMap::new(),
             image_plots: HashMap::new(),
         }
     }
     fn send(&mut self, d: PlotableData) {
+        if self.first_send {
+            self.first_send = false;
+            self.send(PlotableData::InitSource(self.name.1.clone()));
+        }
         if self.pipe.0.is_full() {
             if !self.full_warn {
                 self.full_warn = true;

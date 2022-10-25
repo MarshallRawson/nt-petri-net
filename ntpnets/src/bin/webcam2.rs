@@ -2,7 +2,7 @@ use ntpnets::camera_reader::CameraReader;
 use ntpnets::image_consumer::ImageConsumer;
 
 use ntpnet_lib::{net::Net, multi_reactor::MultiReactor};
-use plotmux::plotmux::PlotMux;
+use plotmux::plotmux::{PlotMux, ClientMode};
 
 use std::collections::HashSet;
 use image::ImageBuffer;
@@ -12,6 +12,8 @@ use clap::Parser;
 struct Args {
     #[arg(short, long, default_value_t = 30)]
     fps: u32,
+    #[arg(short, long)]
+    remote_plotmux: Option<String>,
 }
 
 fn main() {
@@ -40,6 +42,11 @@ fn main() {
         vec![HashSet::from(["camera_reader".into()]), HashSet::from(["image_consumer".into()])],
         &mut plotmux
     );
-    plotmux.make_ready(Some(&multi_reactor.png()));
+    let plotmux_mode = if let Some(addr) = args.remote_plotmux {
+        ClientMode::Remote(addr)
+    } else {
+        ClientMode::Local()
+    };
+    plotmux.make_ready(Some(&multi_reactor.png()), plotmux_mode);
     multi_reactor.run();
 }

@@ -23,9 +23,9 @@ struct TcpHandler {
     sender: Sender<(usize, PlotableData)>,
 }
 impl TcpHandler {
-    fn make(port: u32) -> (Self, Receiver<(usize, PlotableData)>) {
+    fn make(addr: String) -> (Self, Receiver<(usize, PlotableData)>) {
         loop {
-            match TcpStream::connect(format!("localhost:{}", port)) {
+            match TcpStream::connect(addr.clone()) {
                 Err(e) => {
                     println!("Error while connecting to TCP: {}, trying again!", e);
                     sleep(Duration::from_secs(1));
@@ -64,8 +64,8 @@ enum PlotMode {
     Image(),
 }
 pub struct PlotMuxUi {
-    sources: Vec<PlotSource>,
-    port: u32,
+    sources: Vec<Option<PlotSource>>,
+    addr: String,
     receiver: Option<Receiver<(usize, PlotableData)>>,
     source_search: String,
     graph_image: Option<RetainedImage>,
@@ -76,11 +76,7 @@ pub struct PlotMuxUi {
     font_size: f32,
 }
 impl PlotMuxUi {
-    pub fn make(graph_png_path: Option<&String>, port: u32, source_names: Vec<String>) -> Self {
-        let mut sources = Vec::<_>::new();
-        for name in &source_names {
-            sources.push(PlotSource::make(name.clone()));
-        }
+    pub fn make(graph_png_path: Option<&String>, addr: String) -> Self {
         let graph_image = if let Some(graph_png_path) = graph_png_path {
             let graph_image0 = ImageReader::open(graph_png_path).unwrap();
             let graph_image1 = graph_image0.decode().unwrap();
@@ -100,8 +96,8 @@ impl PlotMuxUi {
             None
         };
         PlotMuxUi {
-            sources: sources,
-            port: port,
+            sources: vec![],
+            addr: addr,
             receiver: None,
             source_search: "".into(),
             graph_image: graph_image,
@@ -118,7 +114,7 @@ impl PlotMuxUi {
             "PlotMux",
             native_options,
             Box::new(|cc| {
-                let (tcp_handler, rx) = TcpHandler::make(self.port);
+                let (tcp_handler, rx) = TcpHandler::make(self.addr.clone());
                 self.receiver = Some(rx);
                 tcp_handler.spin(cc.egui_ctx.clone());
                 Box::new(self)
@@ -130,7 +126,17 @@ impl PlotMuxUi {
 impl eframe::App for PlotMuxUi {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         while let Ok((idx, new_data)) = self.receiver.as_ref().unwrap().try_recv() {
-            self.sources[idx].new_data(new_data);
+            if idx >= self.sources.len() {
+                while self.sources.len() < idx + 1 {
+                    self.sources.push(None);
+                }
+            }
+            match new_data {
+                PlotableData::InitSource(name) => {
+                    self.sources[idx] = Some(PlotSource::make(name));
+                },
+                _ => self.sources[idx].as_mut().unwrap().new_data(new_data),
+            }
         }
         let rich_text =  {
             let font = self.font_size;
@@ -155,8 +161,12 @@ impl eframe::App for PlotMuxUi {
                         .iter()
                         .enumerate()
                         .filter_map(|(i, source)| {
-                            if source.name.starts_with(&self.source_search) {
-                                Some((i, source.name.clone()))
+                            if let Some(source) = source {
+                                if source.name.starts_with(&self.source_search) {
+                                    Some((i, source.name.clone()))
+                                } else {
+                                    None
+                                }
                             } else {
                                 None
                             }
@@ -174,7 +184,7 @@ impl eframe::App for PlotMuxUi {
                     }
                 });
                 if let Some(source_idx) = self.selected_source {
-                    ui.heading(rich_text(&self.sources[source_idx].name));
+                    ui.heading(rich_text(&self.sources[source_idx].as_ref().unwrap().name));
                     let mut text = None;
                     let mut series_2d = None;
                     let mut image = None;
@@ -196,7 +206,7 @@ impl eframe::App for PlotMuxUi {
                                 egui::ScrollArea::vertical()
                                     .stick_to_bottom(true)
                                     .show(ui, |ui| {
-                                        for t in &self.sources[source_idx].texts {
+                                        for t in &self.sources[source_idx].as_ref().unwrap().texts {
                                             let text = match t {
                                                 (Some(t), text) => rich_text(
                                                     &("[".to_string() + &t.1 + "]: " + &text)
@@ -218,7 +228,7 @@ impl eframe::App for PlotMuxUi {
                                 egui::ScrollArea::vertical()
                                     .show(ui, |ui| {
                                         for (plot_name, plot) in
-                                            &self.sources[source_idx].series_plots_2d {
+                                            &self.sources[source_idx].as_ref().unwrap().series_plots_2d {
                                             ui.label(rich_text(plot_name));
                                             plot::Plot::new(plot_name)
                                                 .view_aspect(4.0)
@@ -256,7 +266,7 @@ impl eframe::App for PlotMuxUi {
                             PlotMode::Image() => {
                                 egui::ScrollArea::both()
                                     .show(ui, |ui| {
-                                        for (image_name, plot_image) in &self.sources[source_idx].image_plots {
+                                        for (image_name, plot_image) in &self.sources[source_idx].as_ref().unwrap().image_plots {
                                             ui.label(rich_text(image_name));
                                             plot_image.show(ui);
                                         }
