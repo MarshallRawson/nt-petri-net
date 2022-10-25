@@ -74,6 +74,7 @@ pub struct PlotMuxUi {
     mode: Option<PlotMode>,
     series_2d_history: f64,
     font_size: f32,
+    plot_ratios: f32,
 }
 impl PlotMuxUi {
     pub fn make(graph_png_path: Option<&String>, addr: String) -> Self {
@@ -106,6 +107,7 @@ impl PlotMuxUi {
             mode: None,
             series_2d_history: 0.0,
             font_size: 15.0,
+            plot_ratios: 4.0,
         }
     }
     pub fn spin(mut self) {
@@ -224,6 +226,8 @@ impl eframe::App for PlotMuxUi {
                                         egui::DragValue::new(&mut self.series_2d_history)
                                             .speed(1.0),
                                     );
+                                    ui.label(rich_text("Plot ratios:"));
+                                    ui.add(egui::DragValue::new(&mut self.plot_ratios).speed(0.01).clamp_range(0.1..=10.));
                                 });
                                 egui::ScrollArea::vertical()
                                     .show(ui, |ui| {
@@ -231,7 +235,7 @@ impl eframe::App for PlotMuxUi {
                                             &self.sources[source_idx].as_ref().unwrap().series_plots_2d {
                                             ui.label(rich_text(plot_name));
                                             plot::Plot::new(plot_name)
-                                                .view_aspect(4.0)
+                                                .view_aspect(self.plot_ratios)
                                                 .legend(plot::Legend::default())
                                                 .show(ui, |plot_ui| {
                                                     for (name, (color, vec)) in plot
