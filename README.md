@@ -116,8 +116,6 @@ To find the maximal concurrent execution of a Petri net, we find the maximum num
 
 In the root of the repo, run `cargo run --bin webcam`
 
-*(NOTE: for 1080p webcams, use `cargo run --bin webcam`)*
-
 This will run the executable target `webcam`, which corresponds to the `ntpnets/src/bin/webcam.rs` source file.
 
 You will be presented with a window named `PlotMux`. PlotMux is the supported debugging application I made to multiplex realtime debugging info, such as 2d plots, images, and text.
@@ -159,8 +157,6 @@ To stop the program, hit `Ctrl + C` in the terminal where the program was run.
 *(Only verified on Ubuntu 20.04)*
 
 In the root of the repo, run `cargo run --bin webcam2`
-
-*(NOTE: for 1080p webcams, use `cargo run --bin webcam2`)*
 
 This will run the executable target `webcam`, which corresponds to the `ntpnets/src/bin/webcam2.rs` source file.
 
