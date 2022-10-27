@@ -140,16 +140,16 @@ impl eframe::App for PlotMuxUi {
                 _ => self.sources[idx].as_mut().unwrap().new_data(new_data),
             }
         }
+        if ctx.input().modifiers.shift {
+            self.font_size += (ctx.input().zoom_delta() - 1.0) * 2.0;
+        }
+        self.font_size = self.font_size.clamp(5.0, 100.0);
         let rich_text =  {
             let font = self.font_size;
             move |string: &str| { RichText::new(string).size(font) }
         };
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(rich_text("Font size:"));
-                ui.add(egui::DragValue::new(&mut self.font_size).clamp_range(5..=100));
-                ui.checkbox(&mut self.show_graph, rich_text("Graph"));
-            });
+            ui.checkbox(&mut self.show_graph, rich_text("Graph"));
             if self.show_graph {
                 if let Some(graph_image) = &self.graph_image {
                     graph_image.show(ui);
@@ -227,7 +227,7 @@ impl eframe::App for PlotMuxUi {
                                             .speed(1.0),
                                     );
                                     ui.label(rich_text("Plot ratios:"));
-                                    ui.add(egui::DragValue::new(&mut self.plot_ratios).speed(0.01).clamp_range(0.1..=10.));
+                                    ui.add(egui::Slider::new(&mut self.plot_ratios, 0.1..=10.));
                                 });
                                 egui::ScrollArea::vertical()
                                     .show(ui, |ui| {
