@@ -8,6 +8,7 @@ use std::net::{TcpListener, TcpStream}; //, IpAddr, Ipv4Addr, Shutdown};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
+use image::{Rgb, RgbImage, ImageBuffer};
 
 use crate::plotsink::PlotSink;
 
@@ -34,8 +35,8 @@ pub enum PlotableData {
     InitSeriesPlot2d(String),
     InitSeries2d(InitSeries2d),
     Series2d(Plotable2d),
-    InitImagePlot(String),
-    Image(PlotableImage),
+    InitImage(PlotableInitImage),
+    DeltaImage(PlotableDeltaImage),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -85,17 +86,32 @@ impl Plotable2d {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct PlotableImage {
-    pub channel: usize,
+pub struct PlotableInitImage {
+    pub channel: String,
     pub dim: (u32, u32),
     #[serde(with = "serde_bytes")]
     pub raw: Vec<u8>,
 }
-impl PlotableImage {
-    pub fn make(channel: usize, image: image::RgbImage) -> PlotableData {
-        PlotableData::Image(Self {
+impl PlotableInitImage {
+    pub fn make(channel: String, image: RgbImage) -> PlotableData {
+        PlotableData::InitImage(Self {
             channel: channel,
             dim: image.dimensions(),
+            raw: image.into_raw(),
+        })
+    }
+}
+
+pub type RgbDeltaImage = ImageBuffer<Rgb<i16>, Vec<i16>>;
+#[derive(Serialize, Deserialize, Clone)]
+pub struct PlotableDeltaImage {
+    pub channel: usize,
+    pub raw: Vec<i16>,
+}
+impl PlotableDeltaImage {
+    pub fn make(channel: usize, image: RgbDeltaImage) -> PlotableData {
+        PlotableData::DeltaImage(Self {
+            channel: channel,
             raw: image.into_raw(),
         })
     }
@@ -168,11 +184,13 @@ impl PlotMux {
             for r in rs {
                 sel.recv(&r);
             }
+            let mut encoder = snap::raw::Encoder::new();
             loop {
                 let oper = sel.select();
                 let idx = oper.index();
                 let data = oper.recv(&rs[idx]).unwrap();
                 let buf = bincode::serialize(&(idx, data)).unwrap();
+                let buf = encoder.compress_vec(&buf).unwrap();
                 self.client
                     .as_mut()
                     .unwrap()
