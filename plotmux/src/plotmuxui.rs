@@ -44,16 +44,20 @@ impl TcpHandler {
         }
     }
     fn spin(mut self, ctx: egui::Context) {
-        thread::spawn(move || loop {
-            let mut len_buf =
-                vec![0; bincode::serialized_size::<usize>(&0_usize).unwrap() as usize];
-            self.stream.read_exact(&mut len_buf).unwrap();
-            let mut data_buf = vec![0; bincode::deserialize(&len_buf).unwrap()];
-            self.stream.read_exact(&mut data_buf).unwrap();
-            self.sender
-                .send(bincode::deserialize(&data_buf).unwrap())
-                .unwrap();
-            ctx.request_repaint();
+        thread::spawn(move || {
+            let mut decoder = snap::raw::Decoder::new();
+            loop {
+                let mut len_buf =
+                    vec![0; bincode::serialized_size::<usize>(&0_usize).unwrap() as usize];
+                self.stream.read_exact(&mut len_buf).unwrap();
+                let mut data_buf = vec![0; bincode::deserialize(&len_buf).unwrap()];
+                self.stream.read_exact(&mut data_buf).unwrap();
+                let data_buf = decoder.decompress_vec(&data_buf).unwrap();
+                self.sender
+                    .send(bincode::deserialize(&data_buf).unwrap())
+                    .unwrap();
+                ctx.request_repaint();
+            }
         });
     }
 }
@@ -270,7 +274,7 @@ impl eframe::App for PlotMuxUi {
                             PlotMode::Image() => {
                                 egui::ScrollArea::both()
                                     .show(ui, |ui| {
-                                        for (image_name, plot_image) in &self.sources[source_idx].as_ref().unwrap().image_plots {
+                                        for (image_name, _, plot_image) in &self.sources[source_idx].as_ref().unwrap().image_plots {
                                             ui.label(rich_text(image_name));
                                             plot_image.show(ui);
                                         }

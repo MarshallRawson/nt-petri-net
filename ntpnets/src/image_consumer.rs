@@ -2,7 +2,7 @@ use fft2d::slice::{fft_2d, ifft_2d};
 use image::buffer::ConvertBuffer;
 use image::{GrayImage, RgbImage};
 use ntpnet_lib::TransitionMaker;
-use plotmux::plotsink::PlotSink;
+use plotmux::plotsink::{PlotSink, ImageCompression};
 use rustfft::num_complex::Complex;
 #[derive(ntpnet_macro::TransitionOutputTokens)]
 struct Out {
@@ -46,8 +46,8 @@ impl ImageConsumer {
         let image: RgbImage = GrayImage::from_raw(width as _, height as _, image)
             .unwrap()
             .convert();
-        self.p.plot_image("ifft(fft(image))", image.convert());
-        self.p.plot_image("original image", original_image.convert());
+        self.p.plot_image("ifft(fft(image))", image.convert(), ImageCompression::Lvl3);
+        self.p.plot_image("original image", original_image.convert(), ImageCompression::Lvl3);
         Output::Out(Out { out: () })
     }
 }

@@ -1,4 +1,4 @@
-use crate::plotmux::{color, Color, PlotableData};
+use crate::plotmux::{color, Color, PlotableData, RgbDeltaImage};
 use eframe::egui;
 use eframe::egui::widgets::plot::PlotPoint;
 use egui_extras::image::RetainedImage;
@@ -30,7 +30,7 @@ pub struct PlotSource {
     pub name: String,
     pub texts: VecDeque<(Option<(Color, String)>, String)>,
     pub series_plots_2d: Vec<(String, Vec<(String, (Color, VecDeque<PlotPoint>))>)>,
-    pub image_plots: Vec<(String, RetainedImage)>,
+    pub image_plots: Vec<(String, image::RgbaImage, RetainedImage)>,
 }
 impl PlotSource {
     pub fn make(name: String) -> Self {
@@ -64,30 +64,44 @@ impl PlotSource {
                 self.series_plots_2d[series_2d.channel].1[series_2d.series].1.1
                     .push_back(PlotPoint::new(series_2d.x, series_2d.y));
             },
-            PlotableData::InitImagePlot(channel) => {
-                let rimage = RetainedImage::from_color_image(
-                    &channel,
-                    egui::ColorImage::from_rgba_unmultiplied(
-                        [DEFAULT_IMAGE.width() as _, DEFAULT_IMAGE.height() as _],
-                        DEFAULT_IMAGE.as_raw(),
-                    ),
-                );
-                self.image_plots.push((channel, rimage));
-            }
-            PlotableData::Image(pimage) => {
+            PlotableData::InitImage(pimage) => {
                 let image: image::RgbaImage =
                     image::RgbImage::from_raw(pimage.dim.0, pimage.dim.1, pimage.raw)
                         .unwrap()
                         .convert();
                 let rimage = RetainedImage::from_color_image(
-                    &self.image_plots[pimage.channel].0,
+                    &pimage.channel,
                     egui::ColorImage::from_rgba_unmultiplied(
                         [image.width() as _, image.height() as _],
                         image.as_raw(),
                     ),
                 );
-                self.image_plots[pimage.channel].1 = rimage;
-            }
+                if let Some(position) = self.image_plots.iter().position(|(c, _, _)| pimage.channel == *c) {
+                    self.image_plots[position] = (pimage.channel, image, rimage);
+                } else {
+                    self.image_plots.push((pimage.channel, image, rimage));
+                }
+            },
+            PlotableData::DeltaImage(dimage) => {
+                let dims = self.image_plots[dimage.channel].1.dimensions();
+                let image = RgbDeltaImage::from_vec(dims.0, dims.1, dimage.raw).unwrap();
+                for (a, b) in std::iter::zip(self.image_plots.get_mut(dimage.channel).unwrap().1.pixels_mut(), image.pixels()) {
+                    *a = image::Rgba::from([
+                        (b[0] + a[0] as i16) as u8,
+                        (b[1] + a[1] as i16) as u8,
+                        (b[2] + a[2] as i16) as u8,
+                        a[3],
+                    ]);
+                }
+                let image = &self.image_plots[dimage.channel].1;
+                self.image_plots[dimage.channel].2 = RetainedImage::from_color_image(
+                    &self.image_plots[dimage.channel].0,
+                    egui::ColorImage::from_rgba_unmultiplied(
+                        [image.width() as _, image.height() as _],
+                        image.as_raw(),
+                    ),
+                );
+            },
         }
     }
 }
