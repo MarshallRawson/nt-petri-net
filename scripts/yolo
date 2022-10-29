@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+
+mkdir -p target/yolo
+cd target/yolo
+DOWNLOADS="https://github.com/LaurentMazare/ocaml-torch/releases/download/v0.1-unstable/yolo-v3.ot
+"
+
+for url in $DOWNLOADS; do
+  data=${url##*\/}
+  if [ -f $data ]; then
+    echo "already have $data, skipping download";
+  else
+    wget $url
+  fi
+done

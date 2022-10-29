@@ -1,5 +1,5 @@
 use ntpnets::camera_reader::CameraReader;
-use ntpnets::image_consumer::ImageConsumer;
+use ntpnets::yolo::Yolo as ImageConsumer;
 
 use ntpnet_lib::{net::Net, multi_reactor::MultiReactor};
 use plotmux::plotmux::{PlotMux, ClientMode};
