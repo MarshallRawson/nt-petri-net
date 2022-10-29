@@ -1,2 +1,2 @@
 #!/bin/bash
-git diff -- . ':(exclude)Cargo.lock' $@
+git diff $@ -- . ':(exclude)Cargo.lock'
