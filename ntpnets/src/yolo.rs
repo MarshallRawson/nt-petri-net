@@ -48,7 +48,7 @@ impl Yolo {
             .parent().unwrap()
             .join(std::path::Path::new("ntpnets"))
             .join(std::path::Path::new("src"))
-            .join(std::path::Path::new("yolo-v3.ocfg"));
+            .join(std::path::Path::new("yolo-v3.cfg"));
         let darknet = darknet::parse_config(&config_path).unwrap();
         let weights_path = std::env::current_exe()
             .expect("Getting current exe")
@@ -80,11 +80,4 @@ impl Yolo {
         self.p.println(&format!("{:#?}", (*self.model.borrow_f()).forward_t(&image, false).squeeze()));
         Output::Out(Out { out: () })
     }
-}
-pub fn main() -> Result<()> {
-
-    
-
-
-    Ok(())
 }
