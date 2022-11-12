@@ -1,5 +1,6 @@
 use ntpnets::camera_reader::CameraReader;
-use ntpnets::image_consumer::ImageConsumer;
+//use ntpnets::image_consumer::ImageConsumer;
+use ntpnets::facial_recognition::FacialRecognition;
 
 use ntpnet_lib::{net::Net, reactor::Reactor};
 use plotmux::plotmux::{PlotMux, ClientMode};
@@ -30,7 +31,7 @@ fn main() {
         )
         .add_transition(
             "image_consumer",
-            ImageConsumer::maker(plotmux.add_plot_sink("image_consumer")),
+            FacialRecognition::maker(plotmux.add_plot_sink("image_consumer")),
         )
         .transition_to_place("camera_reader", "image", "Image")
         .place_to_transition("Image", "image", "image_consumer")

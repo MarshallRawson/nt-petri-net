@@ -1,0 +1,6 @@
+#!/usr/bin/bash
+
+
+mkdir -p target/data
+cd target/data
+wget https://github.com/blaueck/tf-mtcnn/raw/master/mtcnn.pb
