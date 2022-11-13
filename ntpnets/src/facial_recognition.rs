@@ -21,7 +21,7 @@ struct BBox {
     pub y1: f32,
     pub x2: f32,
     pub y2: f32,
-    pub prob: f32,
+    pub _prob: f32,
 }
 
 #[derive(ntpnet_macro::TransitionOutputTokens)]
@@ -41,7 +41,7 @@ pub struct FacialRecognition {
 }
 impl FacialRecognition {
     pub fn maker(mut plotsink: PlotSink) -> ntpnet_lib::TransitionMaker {
-        Box::new(|| {
+        Box::new(move || {
             let model = {
                 let path = env::current_exe().unwrap().as_path().parent().unwrap().parent().unwrap().join(Path::new("data/mtcnn.pb"));
                 plotsink.println2("model", &format!("{:?}", path));
@@ -82,7 +82,7 @@ impl FacialRecognition {
                 x1: bbox[1],
                 y2: bbox[2],
                 x2: bbox[3],
-                prob: prob[0],
+                _prob: prob[0],
             }
         }).collect::<Vec<_>>();
         let mut faces = RgbImage::from_pixel(image.width(), image.height(), Rgb::<u8>::from([0, 0, 0]));

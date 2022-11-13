@@ -6,6 +6,7 @@ use std::collections::HashSet;
 
 pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
+    let lt_token = if let Some(_) = &ast.generics.lt_token { quote!{< '_ >} } else { quote!{} };
     //#[derive(Debug)]
     struct TransitionCallback {
         name: Ident,
@@ -157,7 +158,7 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
     );
     let gen = quote! {
         #interface_enums
-        impl ::ntpnet_lib::transition::Transition for #name {
+        impl ::ntpnet_lib::transition::Transition for #name #lt_token {
             fn description(&self) -> ::ntpnet_lib::transition::Description
             {
                 ::ntpnet_lib::transition::Description {
