@@ -15,6 +15,7 @@ clap = { version = "4.0.7", features = ["derive"] }
 fft2d = "0.1.0"
 rustfft = "6.0.1"
 tensorflow = "0.19.1"
-soundio = "0.2.1"
-crossbeam-channel = "0.5.6"
-ouroboros="0.15.5"
+
+libpulse-simple-binding = "2.25.0"
+libpulse-sys = "1.19.3"
+libpulse-binding = "2.26.0"

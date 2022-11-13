@@ -1,6 +1,7 @@
-use soundio;
-use crossbeam_channel;
-use ouroboros::self_referencing;
+use libpulse_simple_binding::Simple;
+use libpulse_sys::stream::pa_stream_direction_t as Direction;
+use libpulse_binding::sample::{Spec, Format};
+use std::time::Instant;
 
 use ntpnet_macro;
 use ntpnet_lib;
@@ -16,105 +17,64 @@ struct Samples {
     samples: (),//Vec::<i16>,
 }
 
-#[self_referencing]
-struct SoundIOStuff<'a> {
-    ctx: soundio::Context<'a>,
-    #[borrows(ctx)]
-    #[covariant]
-    input_dev: soundio::Device<'this>,
-    #[borrows(input_dev)]
-    #[covariant]
-    in_stream: soundio::InStream<'this>,
-}
-
-struct SoundIOCallback {
-    out_buf: crossbeam_channel::Sender<Vec<i16>>,
-}
-impl SoundIOCallback {
-    #[allow(dead_code)] // rustc cant deduce that this actually is used
-    fn f(&mut self, stream: &mut soundio::InStreamReader) {
-        let mut frames_left = stream.frame_count_max();
-        let mut ret = vec![];
-        loop {
-            if let Err(e) = stream.begin_read(frames_left) {
-                println!("Error reading from stream: {}", e);
-                return;
-            }
-            for f in 0..stream.frame_count() {
-                ret.push(stream.sample::<i16>(0, f))
-            }
-            frames_left -= stream.frame_count();
-            if frames_left <= 0 {
-                break;
-            }
-            stream.end_read();
-        }
-        self.out_buf.send(ret).unwrap();
-    }
-}
-
 #[derive(ntpnet_macro::Transition)]
 #[ntpnet_transition(f: Input(Enable) -> Output(Samples))]
-pub struct SoundReader<'a> {
+pub struct SoundReader {
     p: PlotSink,
-    soundio_stuff: SoundIOStuff<'a>,
-    rx: crossbeam_channel::Receiver<Vec<i16>>,
-    first: bool,
+    simp: Simple,
+    block: usize,
     count: usize,
+    last_time: Option<Instant>,
+    start_time: Instant,
 }
-impl SoundReader<'_> {
+impl SoundReader {
     pub fn maker(plotsink: PlotSink) -> ntpnet_lib::TransitionMaker {
         Box::new(move || {
-            let mut ctx = soundio::Context::new();
-            ctx.set_app_name("ntpetrinets");
-            ctx.connect().unwrap();
-            ctx.flush_events();
-            let sample_rate = 44100;
-            let soundio_format = soundio::Format::S16LE;
-            let default_layout = soundio::ChannelLayout::get_default(1 as _);
-            let (sender, rx) = crossbeam_channel::unbounded();
-            let mut soundio_cb = SoundIOCallback { out_buf: sender };
+            let spec = Spec {
+                format: Format::S16NE,
+                channels: 1,
+                rate: 44100,
+            };
             Box::new(
                 SoundReader {
                     p: plotsink,
-                    soundio_stuff: SoundIOStuffBuilder {
-                        ctx: ctx,
-                        input_dev_builder: |ctx: &soundio::Context| {
-                            ctx.default_input_device().expect("could not open device")
-                        },
-                        in_stream_builder: |input_dev: &soundio::Device| {
-                            input_dev.open_instream(
-                                sample_rate as _,
-                                soundio_format,
-                                default_layout,
-                                0.1,
-                                move |x| soundio_cb.f(x),
-                                None::<fn()>,
-                                None::<fn(soundio::Error)>,
-                            ).unwrap()
-                        },
-                    }.build(),
-                    rx: rx,
-                    first: false,
+                    simp: Simple::new(
+                        None,                // Use the default server
+                        "FooApp",            // Our application’s name
+                        Direction::Record,   // We want a playback stream
+                        None,                // Use the default device
+                        "Music",             // Description of our stream
+                        &spec,               // Our sample format
+                        None,                // Use default channel map
+                        None                 // Use default buffering attributes
+                    ).unwrap(),
+                    block: f64::round(0.1 * spec.rate as f64) as usize, // 0.1 sec * (samples / sec)
                     count: 0,
+                    last_time: None,
+                    start_time: Instant::now(),
                 }
             )
         })
     }
+
     fn f(&mut self, _i: Input) -> Output {
-        if self.first {
-            self.first = false;
-            self.soundio_stuff.with_mut(|fields| {
-                fields.in_stream.start().unwrap();
-            });
+        let mut samples = vec![0; self.block];
+        match self.simp.read(samples.as_mut_slice()) {
+            Err(e) => println!("{}", e.to_string().unwrap()),
+            Ok(_) => {},
         }
-        let samples = self.rx.iter().flatten().collect::<Vec<_>>();
-        for (i, x) in samples.iter().enumerate(){
-            self.p.plot_series_2d("", "", (self.count + i) as _, *x as _);
+        let now = Instant::now();
+        if let Some(t) = self.last_time {
+            self.p.plot_series_2d(
+                "",
+                "1 / frame period",
+                (now - self.start_time).as_secs_f64(),
+                1. / (now - t).as_secs_f64()
+            );
         }
+        self.last_time = Some(now);
+        self.count += 1;
         Output::Samples(Samples { samples: () })
     }
 }
-
-
 
