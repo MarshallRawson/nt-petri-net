@@ -64,6 +64,12 @@ impl PlotSource {
                 self.series_plots_2d[series_2d.channel].1[series_2d.series].1.1
                     .push_back(PlotPoint::new(series_2d.x, series_2d.y));
             },
+            PlotableData::Series2dVec(series_2d) => {
+                for (x, y) in series_2d.data {
+                    self.series_plots_2d[series_2d.channel].1[series_2d.series].1.1
+                        .push_back(PlotPoint::new(x, y));
+                }
+            },
             PlotableData::InitImage(pimage) => {
                 let image: image::RgbaImage =
                     image::RgbImage::from_raw(pimage.dim.0, pimage.dim.1, pimage.raw)

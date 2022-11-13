@@ -1543,6 +1543,7 @@ dependencies = [
 name = "ntpnets"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
  "clap",
  "fft2d",
  "image",

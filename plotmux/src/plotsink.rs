@@ -1,4 +1,4 @@
-use crate::plotmux::{color, Color, PlotReceiver, PlotSender, Plotable2d, PlotableData, PlotableInitImage, PlotableDeltaImage, PlotableString, InitSeries2d, RgbDeltaImage};
+use crate::plotmux::{color, Color, PlotReceiver, PlotSender, Series2d, Series2dVec, PlotableData, PlotableInitImage, PlotableDeltaImage, PlotableString, InitSeries2d, RgbDeltaImage};
 
 use std::collections::HashMap;
 
@@ -87,7 +87,7 @@ impl PlotSink {
         }
         self.send(PlotableString::make(channel, s));
     }
-    pub fn plot_series_2d(&mut self, plot_name: &str, series_name: &str, x: f64, y: f64) {
+    fn init_series_2d(&mut self, plot_name: &str, series_name: &str) {
         if !self.series_plots_2d.contains_key(plot_name) {
             self.series_plots_2d.insert(plot_name.into(),
                 (self.series_plots_2d.len(), HashMap::from([(series_name.into(), 0)]))
@@ -100,9 +100,18 @@ impl PlotSink {
             self.series_plots_2d.get_mut(plot_name).unwrap().1.insert(series_name.into(), series_idx);
             self.send(InitSeries2d::make(self.series_plots_2d[plot_name].0, series_name));
         }
+    }
+    pub fn plot_series_2d(&mut self, plot_name: &str, series_name: &str, x: f64, y: f64) {
+        self.init_series_2d(&plot_name, &series_name);
         let plot_idx = self.series_plots_2d[plot_name].0;
         let series_idx = self.series_plots_2d[plot_name].1[series_name];
-        self.send(Plotable2d::make(plot_idx, series_idx, x, y));
+        self.send(Series2d::make(plot_idx, series_idx, x, y));
+    }
+    pub fn plot_series_2d_vec(&mut self, plot_name: &str, series_name: &str, data: Vec<(f64, f64)>) {
+        self.init_series_2d(&plot_name, &series_name);
+        let plot_idx = self.series_plots_2d[plot_name].0;
+        let series_idx = self.series_plots_2d[plot_name].1[series_name];
+        self.send(Series2dVec::make(plot_idx, series_idx, data));
     }
     pub fn plot_image(&mut self, channel: &str, image: image::RgbImage, mask: ImageCompression) {
         if !self.image_plots.contains_key(channel) || self.image_plots[channel].1.is_none() || self.image_plots[channel].1.as_ref().unwrap().dimensions() != image.dimensions() {

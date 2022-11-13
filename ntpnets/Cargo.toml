@@ -19,3 +19,5 @@ tensorflow = "0.19.1"
 libpulse-simple-binding = "2.25.0"
 libpulse-sys = "1.19.3"
 libpulse-binding = "2.26.0"
+
+byteorder = "1.4.3"

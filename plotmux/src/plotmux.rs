@@ -34,7 +34,8 @@ pub enum PlotableData {
     String(PlotableString),
     InitSeriesPlot2d(String),
     InitSeries2d(InitSeries2d),
-    Series2d(Plotable2d),
+    Series2d(Series2d),
+    Series2dVec(Series2dVec),
     InitImage(PlotableInitImage),
     DeltaImage(PlotableDeltaImage),
 }
@@ -68,19 +69,35 @@ impl InitSeries2d {
     }
 }
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Plotable2d {
+pub struct Series2d {
     pub channel: usize,
     pub series: usize,
     pub x: f64,
     pub y: f64,
 }
-impl Plotable2d {
+impl Series2d {
     pub fn make(channel: usize, series: usize, x: f64, y: f64) -> PlotableData {
-        PlotableData::Series2d(Plotable2d {
+        PlotableData::Series2d(Series2d {
             channel: channel,
             series: series,
             x: x,
             y: y
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Series2dVec {
+    pub channel: usize,
+    pub series: usize,
+    pub data: Vec<(f64, f64)>,
+}
+impl Series2dVec {
+    pub fn make(channel: usize, series: usize, data: Vec<(f64, f64)>) -> PlotableData {
+        PlotableData::Series2dVec(Series2dVec {
+            channel: channel,
+            series: series,
+            data: data,
         })
     }
 }
