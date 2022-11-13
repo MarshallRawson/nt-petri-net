@@ -38,11 +38,12 @@ impl SoundReader {
                 channels: 1,
                 rate: 44100,
             };
-            let bytes_per_sample = 2;
+            let bytes_per_sample = 2; // sizeof(i16) / sizeof(u8) = 2
             // 0.1 sec * (samples / sec) * (bytes / sample)
-            let data_block = f64::round(0.1 * spec.rate as f64) as usize * bytes_per_sample;
+            let sec_per_sample = 0.033;
+            let data_block = f64::round(sec_per_sample * spec.rate as f64) as usize * bytes_per_sample;
             // 0.1 sec * (samples / sec)
-            let sample_block = f64::round(0.1 * spec.rate as f64) as usize;
+            let sample_block = f64::round(sec_per_sample * spec.rate as f64) as usize;
             Box::new(
                 SoundReader {
                     p: plotsink,
