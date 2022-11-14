@@ -153,9 +153,9 @@ impl WorkCluster {
     pub fn run(mut self) {
         let start = Instant::now();
         let mut nonblocking_time = 0.0;
-        self.plot_sink.plot_series_2d("reactor timing", "∫ nonblocking", 0.0, 0.0);
+        //self.plot_sink.plot_series_2d("reactor timing", "∫ nonblocking", 0.0, 0.0);
         for (_t_name, (_t_run, (int_t_name, int_t_time))) in &self.transitions {
-            self.plot_sink.plot_series_2d("reactor timing", int_t_name, 0.0, *int_t_time);
+            //self.plot_sink.plot_series_2d("reactor timing", int_t_name, 0.0, *int_t_time);
         }
         let mut blocked = false;
         while !blocked {
@@ -182,12 +182,12 @@ impl WorkCluster {
                             let mut out_map = HashMap::new();
                             let elapsed = (Instant::now() - start).as_secs_f64();
                             nonblocking_time += elapsed - last_nonblocking_time;
-                            self.plot_sink.plot_series_2d("reactor timing", "∫ nonblocking", elapsed, nonblocking_time);
+                            //self.plot_sink.plot_series_2d("reactor timing", "∫ nonblocking", elapsed, nonblocking_time);
                             t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
                             let elapsed2 = (Instant::now() - start).as_secs_f64();
                             last_nonblocking_time = elapsed2;
                             *int_t_time += elapsed2 - elapsed;
-                            self.plot_sink.plot_series_2d("reactor timing", &int_t_name, elapsed2, *int_t_time);
+                            //self.plot_sink.plot_series_2d("reactor timing", &int_t_name, elapsed2, *int_t_time);
                             for ((e_name, ty), t) in out_map.into_iter() {
                                 let place = t_run
                                     .out_edge_to_place

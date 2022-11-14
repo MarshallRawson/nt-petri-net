@@ -13,7 +13,7 @@ rscam = "0.5.5"
 image = "0.24.2"
 clap = { version = "4.0.7", features = ["derive"] }
 fft2d = "0.1.0"
-rustfft = "6.0.1"
+rustfft = "6.1.0"
 tensorflow = "0.19.1"
 
 libpulse-simple-binding = "2.25.0"

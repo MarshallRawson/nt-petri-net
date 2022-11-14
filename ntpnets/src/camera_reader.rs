@@ -17,7 +17,6 @@ struct Image {
 pub struct CameraReader {
     camera: Camera,
     start_time: Instant,
-    last_time: Option<Instant>,
     p: PlotSink,
 }
 impl CameraReader {
@@ -41,7 +40,6 @@ impl CameraReader {
             Box::new(Self {
                 camera: cam,
                 start_time: Instant::now(),
-                last_time: None,
                 p: plotsink,
             })
         })
@@ -51,15 +49,6 @@ impl CameraReader {
         let now = Instant::now();
         let rgb_frame =
             RgbImage::from_raw(frame.resolution.0, frame.resolution.1, frame.to_vec()).unwrap();
-        if let Some(last_time) = self.last_time {
-            self.p.plot_series_2d(
-                "",
-                "1 / frame period",
-                (now - self.start_time).as_secs_f64(),
-                1. / (now - last_time).as_secs_f64(),
-            );
-        }
-        self.last_time = Some(now);
         Output::Image(Image { image: (now, rgb_frame) })
     }
 }

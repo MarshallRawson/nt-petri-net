@@ -1,4 +1,6 @@
-use ntpnet_lib::{net::Net, reactor::Reactor};
+use std::collections::HashSet;
+
+use ntpnet_lib::{net::Net, multi_reactor::MultiReactor};
 use plotmux::plotmux::{PlotMux, ClientMode};
 use ntpnets::camera_reader::CameraReader;
 use ntpnets::facial_recognition::FacialRecognition;
@@ -8,10 +10,10 @@ use ntpnets::voice_face_sync::VoiceFaceSync;
 
 fn main() {
     let mut plotmux = PlotMux::make();
-    let mut n = Net::make()
+    let n = Net::make()
         .set_start_tokens("sound_enable", vec![Box::new(())])
         .set_start_tokens("face_enable", vec![Box::new(())])
-        .set_start_tokens("camera_enable", vec![Box::new(())])
+        //.set_start_tokens("camera_enable", vec![Box::new(())])
         .place_to_transition("sound_enable", "_e", "sound_reader")
         .add_transition("sound_reader", SoundReader::maker(plotmux.add_plot_sink("sound_reader")))
         .transition_to_place("sound_reader", "samples", "sound_samples")
@@ -30,7 +32,15 @@ fn main() {
         .place_to_transition("camera_enable", "_enable", "camera_reader")
     ;
     let png = n.png();
-    let r = Reactor::make(n, &mut plotmux);
+    let r = MultiReactor::make(n,
+        vec![
+            HashSet::from(["sound_reader".into()]),
+            HashSet::from(["camera_reader".into()]),
+            HashSet::from(["facial_recognition".into()]),
+            HashSet::from(["sync".into()]),
+        ],
+        &mut plotmux
+    );
     plotmux.make_ready(Some(&png), ClientMode::Local());
     r.run();
 }

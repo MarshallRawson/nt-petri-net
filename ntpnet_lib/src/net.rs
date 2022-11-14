@@ -71,14 +71,18 @@ impl Net {
 
     pub fn add_transition(mut self, name: &str, t: TransitionMaker) -> Self {
         self.transitions.insert(name.into(), t);
-        self.transition_to_places
-            .insert(name.into(), HashSet::new());
+        if !self.transition_to_places.contains_key(name) {
+            self.transition_to_places.insert(name.into(), HashSet::new());
+        }
         self
     }
     pub fn add_place(mut self, name: &str) -> Self {
-        self.places.insert(name.into(), HashMap::new());
-        self.place_to_transitions
-            .insert(name.into(), HashSet::new());
+        if !self.places.contains_key(name) {
+            self.places.insert(name.into(), HashMap::new());
+        }
+        if !self.place_to_transitions.contains_key(name) {
+            self.place_to_transitions.insert(name.into(), HashSet::new());
+        }
         self
     }
     pub fn set_start_tokens(mut self, place: &str, start_tokens: Vec<Token>) -> Self {
@@ -121,8 +125,7 @@ impl Net {
             if !self.places.contains_key(place) {
                 self.places.insert(place.into(), HashMap::new());
             }
-            self.transition_to_places
-                .insert(transition.into(), HashSet::new());
+            self.transition_to_places.insert(transition.into(), HashSet::new());
             self.transition_to_places.get_mut(transition)
                 .unwrap()
                 .insert(place.into());
