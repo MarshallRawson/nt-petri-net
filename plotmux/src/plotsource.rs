@@ -70,6 +70,10 @@ impl PlotSource {
                         .push_back(PlotPoint::new(x, y));
                 }
             },
+            PlotableData::Line2d(series_2d) => {
+                self.series_plots_2d[series_2d.channel].1[series_2d.series].1.1 =
+                    series_2d.data.into_iter().map(|(x, y)| PlotPoint::new(x, y)).collect();
+            },
             PlotableData::InitImage(pimage) => {
                 let image: image::RgbaImage =
                     image::RgbImage::from_raw(pimage.dim.0, pimage.dim.1, pimage.raw)

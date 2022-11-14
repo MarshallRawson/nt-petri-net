@@ -3,13 +3,14 @@ use rscam::{Camera, Config};
 use ntpnet_lib::TransitionMaker;
 use plotmux::plotsink::PlotSink;
 use std::time::Instant;
+
 #[derive(ntpnet_macro::TransitionInputTokens)]
 struct E {
     _enable: (),
 }
 #[derive(ntpnet_macro::TransitionOutputTokens)]
 struct Image {
-    image: RgbImage,
+    image: (Instant, RgbImage),
 }
 #[derive(ntpnet_macro::Transition)]
 #[ntpnet_transition(read: Input(E) -> Output(Image))]
@@ -47,9 +48,9 @@ impl CameraReader {
     }
     fn read(&mut self, _: Input) -> Output {
         let frame = self.camera.capture().unwrap();
+        let now = Instant::now();
         let rgb_frame =
             RgbImage::from_raw(frame.resolution.0, frame.resolution.1, frame.to_vec()).unwrap();
-        let now = Instant::now();
         if let Some(last_time) = self.last_time {
             self.p.plot_series_2d(
                 "",
@@ -59,6 +60,6 @@ impl CameraReader {
             );
         }
         self.last_time = Some(now);
-        Output::Image(Image { image: rgb_frame })
+        Output::Image(Image { image: (now, rgb_frame) })
     }
 }

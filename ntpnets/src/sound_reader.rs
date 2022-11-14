@@ -15,7 +15,7 @@ struct Enable {
 
 #[derive(ntpnet_macro::TransitionOutputTokens)]
 struct Samples {
-    samples: (),//Vec::<i16>,
+    samples: (Instant, Vec::<i16>),
 }
 
 #[derive(ntpnet_macro::Transition)]
@@ -28,7 +28,6 @@ pub struct SoundReader {
     start_time: Instant,
     data: Vec<u8>,
     sample_block: usize,
-    samples: Vec<(f64, f64)>,
 }
 impl SoundReader {
     pub fn maker(plotsink: PlotSink) -> ntpnet_lib::TransitionMaker {
@@ -62,14 +61,13 @@ impl SoundReader {
                     start_time: Instant::now(),
                     data: vec![0; data_block],
                     sample_block: sample_block,
-                    samples: vec![(0., 0.); sample_block],
                 }
             )
         })
     }
     fn f(&mut self, _i: Input) -> Output {
         match self.simp.read(self.data.as_mut_slice()) {
-            Err(e) => println!("{}", e.to_string().unwrap()),
+            Err(e) => self.p.println2("Err", &format!("{}", e.to_string().unwrap())),
             Ok(_) => {},
         }
         let now = Instant::now();
@@ -81,19 +79,20 @@ impl SoundReader {
                 1. / (now - t).as_secs_f64()
             );
         }
-        for i in 0..self.samples.len() {
-            self.samples[i] = (
-                (self.count*self.sample_block + i) as f64, LittleEndian::read_i16(&self.data[i*2..i*2+2]) as f64
-            );
-        }
-        self.p.plot_series_2d_vec(
+        let samples = {
+            let mut samples = vec![0; self.sample_block];
+            for i in 0..self.sample_block {
+                samples[i] = LittleEndian::read_i16(&self.data[i*2..i*2+2]);
+            }
+            samples
+        };
+        self.p.plot_line_2d(
             "audio",
             "audio",
-            self.samples.clone(),
+            samples.iter().enumerate().map(|(i, x)| (i as f64, *x as f64)).collect()
         );
         self.last_time = Some(now);
         self.count += 1;
-        Output::Samples(Samples { samples: () })
+        Output::Samples(Samples { samples: (now, samples) })
     }
 }
-

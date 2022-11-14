@@ -82,7 +82,7 @@ impl Net {
         self
     }
     pub fn set_start_tokens(mut self, place: &str, start_tokens: Vec<Token>) -> Self {
-        if let Some(p) = self.places.get_mut(&place.to_string()) {
+        if let Some(p) = self.places.get_mut(place) {
             for t in start_tokens.into_iter() {
                 let ty = (&*t).type_id();
                 if !p.contains_key(&ty) {
@@ -98,14 +98,15 @@ impl Net {
         self
     }
     pub fn place_to_transition(mut self, place: &str, edge: &str, transition: &str) -> Self {
-        if let Some(s) = self.place_to_transitions.get_mut(&place.to_string()) {
+        if let Some(s) = self.place_to_transitions.get_mut(place) {
             s.insert(transition.into());
         } else {
-            self.places.insert(place.into(), HashMap::new());
+            if !self.places.contains_key(place) {
+                self.places.insert(place.into(), HashMap::new());
+            }
+            self.place_to_transitions.insert(place.into(), HashSet::new());
             self.place_to_transitions
-                .insert(place.into(), HashSet::new());
-            self.place_to_transitions
-                .get_mut(&place.to_string())
+                .get_mut(place)
                 .unwrap()
                 .insert(transition.into());
         };
@@ -114,14 +115,15 @@ impl Net {
         self
     }
     pub fn transition_to_place(mut self, transition: &str, edge: &str, place: &str) -> Self {
-        if let Some(s) = self.transition_to_places.get_mut(&transition.to_string()) {
+        if let Some(s) = self.transition_to_places.get_mut(transition) {
             s.insert(place.into());
         } else {
-            self.places.insert(place.into(), HashMap::new());
+            if !self.places.contains_key(place) {
+                self.places.insert(place.into(), HashMap::new());
+            }
             self.transition_to_places
                 .insert(transition.into(), HashSet::new());
-            self.transition_to_places
-                .get_mut(&transition.to_string())
+            self.transition_to_places.get_mut(transition)
                 .unwrap()
                 .insert(place.into());
         }

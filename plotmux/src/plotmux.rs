@@ -36,6 +36,7 @@ pub enum PlotableData {
     InitSeries2d(InitSeries2d),
     Series2d(Series2d),
     Series2dVec(Series2dVec),
+    Line2d(Series2dVec),
     InitImage(PlotableInitImage),
     DeltaImage(PlotableDeltaImage),
 }
@@ -93,12 +94,18 @@ pub struct Series2dVec {
     pub data: Vec<(f64, f64)>,
 }
 impl Series2dVec {
-    pub fn make(channel: usize, series: usize, data: Vec<(f64, f64)>) -> PlotableData {
-        PlotableData::Series2dVec(Series2dVec {
+    fn make(channel: usize, series: usize, data: Vec<(f64, f64)>) -> Self {
+        Series2dVec {
             channel: channel,
             series: series,
             data: data,
-        })
+        }
+    }
+    pub fn make_series(channel: usize, series: usize, data: Vec<(f64, f64)>) -> PlotableData {
+        PlotableData::Series2dVec(Self::make(channel, series, data))
+    }
+    pub fn make_line(channel: usize, series: usize, data: Vec<(f64, f64)>) -> PlotableData {
+        PlotableData::Line2d(Self::make(channel, series, data))
     }
 }
 

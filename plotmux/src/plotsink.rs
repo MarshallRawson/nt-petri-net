@@ -111,7 +111,13 @@ impl PlotSink {
         self.init_series_2d(&plot_name, &series_name);
         let plot_idx = self.series_plots_2d[plot_name].0;
         let series_idx = self.series_plots_2d[plot_name].1[series_name];
-        self.send(Series2dVec::make(plot_idx, series_idx, data));
+        self.send(Series2dVec::make_series(plot_idx, series_idx, data));
+    }
+    pub fn plot_line_2d(&mut self, plot_name: &str, series_name: &str, data: Vec<(f64, f64)>) {
+        self.init_series_2d(&plot_name, &series_name);
+        let plot_idx = self.series_plots_2d[plot_name].0;
+        let series_idx = self.series_plots_2d[plot_name].1[series_name];
+        self.send(Series2dVec::make_line(plot_idx, series_idx, data));
     }
     pub fn plot_image(&mut self, channel: &str, image: image::RgbImage, mask: ImageCompression) {
         if !self.image_plots.contains_key(channel) || self.image_plots[channel].1.is_none() || self.image_plots[channel].1.as_ref().unwrap().dimensions() != image.dimensions() {
