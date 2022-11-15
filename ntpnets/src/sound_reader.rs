@@ -81,7 +81,6 @@ impl SoundReader {
             }
             samples
         };
-        self.p.plot_line_2d("", "", samples.iter().enumerate().map(|(x, y)| (x as _, *y as _)).collect());
         self.last_time = Some(now);
         self.count += 1;
         Output::Samples(Samples { samples: (now - self.latency, samples) })

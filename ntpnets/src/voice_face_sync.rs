@@ -8,14 +8,12 @@ use plotmux::plotsink::PlotSink;
 use crate::facial_recognition::Face;
 
 #[derive(ntpnet_macro::TransitionInputTokens)]
-struct VoiceFace {
-    audio: (Instant, Vec<i16>),
+struct Faces {
     faces: (Instant, Vec<Face>),
 }
 #[derive(ntpnet_macro::TransitionOutputTokens)]
-struct VoiceFaceEnable {
-    audio_enable: (),
-    face_enable: (),
+struct FacesEnable {
+    faces_enable: (),
 }
 
 #[derive(ntpnet_macro::TransitionInputTokens)]
@@ -29,7 +27,7 @@ struct VoiceEnable {
 
 
 #[derive(ntpnet_macro::Transition)]
-//#[ntpnet_transition(f: Input(VoiceFace) -> Output(VoiceFaceEnable))]
+#[ntpnet_transition(video: VideoInput(Faces) -> VideoOutput(FacesEnable))]
 #[ntpnet_transition(audio: AudioInput(Voice) -> AudioOutput(VoiceEnable))]
 pub struct VoiceFaceSync {
     p: PlotSink,
@@ -67,10 +65,10 @@ impl VoiceFaceSync {
         }
         self.p.plot_line_2d("", "", self.audio.iter().enumerate().map(|(x, y)| (x as f64, *y as f64)).collect());
         self.tl = Some(t);
-    }/*
-    fn f(&mut self, i: Input) -> Output {
-        let (t, samples) = match i { Input::VoiceFace(VoiceFace { audio: (t, samples), faces: _}) => (t, samples) };
-        self.process_audio(t, samples);
-        Output::VoiceFaceEnable(VoiceFaceEnable{ audio_enable: (), face_enable: () })
-    }*/
+    }
+    fn video(&mut self, _i: VideoInput) -> VideoOutput {
+        //let (t, samples) = match i { Input::VoiceFace(VoiceFace { audio: (t, samples), faces: _}) => (t, samples) };
+        //self.process_audio(t, samples);
+        VideoOutput::FacesEnable(FacesEnable{ faces_enable: () })
+    }
 }
