@@ -4,6 +4,7 @@ use image::{GrayImage, RgbImage};
 use ntpnet_lib::TransitionMaker;
 use plotmux::plotsink::{PlotSink, ImageCompression};
 use rustfft::num_complex::Complex;
+
 #[derive(ntpnet_macro::TransitionOutputTokens)]
 struct Out {
     out: (),

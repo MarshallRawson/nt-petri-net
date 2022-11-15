@@ -69,13 +69,11 @@ impl SoundReader {
         })
     }
     fn f(&mut self, _i: Input) -> Output {
-        let now0 = Instant::now();
         match self.simp.read(self.data.as_mut_slice()) {
             Err(e) => self.p.println2("Err", &format!("{}", e.to_string().unwrap())),
             Ok(_) => {},
         }
         let now = Instant::now();
-        self.p.println(&format!("{}", (now0-now).as_secs_f64()));
         let samples = {
             let mut samples = vec![0; self.sample_block];
             for i in 0..self.sample_block {
@@ -83,7 +81,6 @@ impl SoundReader {
             }
             samples
         };
-        self.p.println(&format!("{}", samples.len()));
         self.p.plot_line_2d("", "", samples.iter().enumerate().map(|(x, y)| (x as _, *y as _)).collect());
         self.last_time = Some(now);
         self.count += 1;
