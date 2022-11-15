@@ -42,7 +42,7 @@ impl SoundReader {
             // sec * (samples / sec) * (bytes / sample)
             let sec_per_sample = 1./30.;
             let data_block = f64::round(sec_per_sample * spec.rate as f64) as usize * bytes_per_sample;
-            // 0.1 sec * (samples / sec)
+            // sec * (samples / sec)
             let sample_block = f64::round(sec_per_sample * spec.rate as f64) as usize;
             let simp = Simple::new(
                 None,                // Use the default server

@@ -213,6 +213,7 @@ impl WorkCluster {
                     for (f_name, case) in &t_run.description.cases {
                         for (i, condition) in case.inputs.iter().enumerate() {
                             if (condition - self.state.binary()).len() == 0 {
+                                self.plot_sink.println(&format!("{:?}", self.state.binary()));
                                 let mut in_map = HashMap::new();
                                 for p_ty in condition {
                                     in_map.insert(
@@ -245,8 +246,12 @@ impl WorkCluster {
                                     self.state.push(&(place, ty), t);
                                 }
                                 blocked = false;
+                                break;
                             }
                         }
+                    }
+                    if !blocked {
+                        t_run.description.cases.rotate_left(1);
                     }
                 }
             }

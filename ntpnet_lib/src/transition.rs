@@ -1,5 +1,5 @@
 use std::any::TypeId;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::Token;
 
@@ -7,7 +7,7 @@ use crate::Token;
 pub struct Description {
     pub in_edges: HashSet<(String, TypeId)>,
     pub out_edges: HashSet<(String, TypeId)>,
-    pub cases: HashMap<String, Case>,
+    pub cases: VecDeque<(String, Case)>,
 }
 #[derive(Debug)]
 pub struct Case {
