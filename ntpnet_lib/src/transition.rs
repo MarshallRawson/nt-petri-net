@@ -7,7 +7,7 @@ use crate::Token;
 pub struct Description {
     pub in_edges: HashSet<(String, TypeId)>,
     pub out_edges: HashSet<(String, TypeId)>,
-    pub cases: VecDeque<(String, Case)>,
+    pub cases: HashMap<String, Case>,
 }
 #[derive(Debug)]
 pub struct Case {

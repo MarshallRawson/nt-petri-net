@@ -123,7 +123,7 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
             }
         }
     );
-    let cases = quote! {::std::collections::VecDeque::from([#cases])};
+    let cases = quote! {::std::collections::HashMap::from([#cases])};
     let callbacks = token_callbacks.iter().fold(quote!{},
         |acc, tc| {
             let input = &tc.input.0;

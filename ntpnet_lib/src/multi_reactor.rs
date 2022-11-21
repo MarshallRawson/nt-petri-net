@@ -1,5 +1,5 @@
 use bimap::BiMap;
-use std::any::TypeId;
+use std::any::{TypeId, type_name_of_val};
 use std::mem;
 use std::thread;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -26,23 +26,23 @@ struct State {
     input_places_idx: BiMap<String, usize>,
     receivers: Vec<Receiver<(TypeId, Token)>>,
     output_places: HashMap<String, Sender<(TypeId, Token)>>,
-    state: HashMap<(String, TypeId), usize>,
+    state: HashMap<(String, TypeId), (String, usize)>,
     state_exists: HashSet<(String, TypeId)>,
 }
 impl State {
     fn make(mut places: HashMap<String, HashMap<TypeId, VecDeque<Token>>>, input_places: HashMap<String, Receiver<(TypeId, Token)>>, output_places: HashMap<String, Sender<(TypeId, Token)>>) -> Self {
         let state = {
             let mut state = HashMap::new();
-            for (place_name, ty_v) in places.iter_mut() {
+            for (place_name, ty_v) in places.iter() {
                 for (ty, v) in ty_v.iter() {
-                    state.insert((place_name.clone(), ty.clone()), v.len());
+                    state.insert((place_name.clone(), ty.clone()), (type_name_of_val(&v[0]).into(), v.len()));
                 }
             }
             state
         };
         let state_exists = state
             .iter()
-            .filter_map(|(k, v)| if *v > 0 { Some(k.clone()) } else { None })
+            .filter_map(|(k, v)| if v.1 > 0 { Some(k.clone()) } else { None })
             .collect::<_>();
         let mut input_places_idx = BiMap::new();
         let input_places = input_places.into_iter().enumerate().map(|(i, (name, rx))| {
@@ -59,7 +59,6 @@ impl State {
         }
     }
     fn block_rx(&mut self) {
-        self.try_rx();
         let mut rxs = vec![];
         mem::swap(&mut self.receivers, &mut rxs);
         let mut sel = Select::new();
@@ -88,13 +87,18 @@ impl State {
         }
         mem::swap(&mut self.receivers, &mut rxs);
     }
-    fn binary(&mut self) -> &HashSet<(String, TypeId)> {
+    fn binary(&mut self, plot: Option<(&mut PlotSink, f64)>) -> &HashSet<(String, TypeId)> {
         self.try_rx();
+        if let Some((plot, time)) = plot {
+            for ((place, _), (tname, len)) in &self.state {
+                plot.plot_series_2d("state", &format!("{}/{}", place, tname), time, *len as f64);
+            }
+        }
         &self.state_exists
     }
     fn pop(&mut self, p_ty: &(String, TypeId)) -> Token {
-        *self.state.get_mut(p_ty).unwrap() -= 1;
-        if *self.state.get_mut(p_ty).unwrap() == 0 {
+        *&mut self.state.get_mut(p_ty).unwrap().1 -= 1;
+        if *&mut self.state.get_mut(p_ty).unwrap().1 == 0 {
             self.state_exists.remove(p_ty);
         }
         self.places
@@ -114,7 +118,7 @@ impl State {
                     .get_mut(&p_ty.0)
                     .unwrap()
                     .insert(p_ty.1.clone(), VecDeque::new());
-                self.state.insert(p_ty.clone(), 0);
+                self.state.insert(p_ty.clone(), (type_name_of_val(&t).into(), 0));
             }
             self.places
                 .get_mut(&p_ty.0)
@@ -122,7 +126,7 @@ impl State {
                 .get_mut(&p_ty.1)
                 .unwrap()
                 .push_back(t);
-            *self.state.get_mut(p_ty).unwrap() += 1;
+            *&mut self.state.get_mut(p_ty).unwrap().1 += 1;
             if !self.state_exists.contains(p_ty) {
                 self.state_exists.insert(p_ty.clone());
             }
@@ -197,7 +201,7 @@ impl WorkCluster {
             plot_sink: plot_sink,
         }
     }
-    pub fn run(mut self) {
+    pub fn run(mut self, plot_state: bool) {
         let start = Instant::now();
         self.plot_sink.plot_series_2d("reactor timing", "blocking", 0.0, 0.0);
         self.plot_sink.plot_series_2d("reactor timing", "nonblocking", 0.0, 0.0);
@@ -212,8 +216,12 @@ impl WorkCluster {
                 for (t_name, t_run) in self.transitions.iter_mut() {
                     for (f_name, case) in &t_run.description.cases {
                         for (i, condition) in case.inputs.iter().enumerate() {
-                            if (condition - self.state.binary()).len() == 0 {
-                                self.plot_sink.println(&format!("{:?}", self.state.binary()));
+                            let state_plotting = if plot_state {
+                                Some((&mut self.plot_sink, (Instant::now() - start).as_secs_f64()))
+                            } else {
+                                None
+                            };
+                            if (condition - self.state.binary(state_plotting)).len() == 0 {
                                 let mut in_map = HashMap::new();
                                 for p_ty in condition {
                                     in_map.insert(
@@ -246,12 +254,8 @@ impl WorkCluster {
                                     self.state.push(&(place, ty), t);
                                 }
                                 blocked = false;
-                                break;
                             }
                         }
-                    }
-                    if !blocked {
-                        t_run.description.cases.rotate_left(1);
                     }
                 }
             }
@@ -381,10 +385,10 @@ impl MultiReactor {
             pseudo_hashes: pseudo_hashes,
         }
     }
-    pub fn run(self) {
+    pub fn run(self, state_plotting: bool) {
         let mut threads = vec![];
         for wc in self.work_clusters.into_iter() {
-            threads.push(thread::spawn(move || wc().run()));
+            threads.push(thread::spawn(move || wc().run(state_plotting)));
         }
         for t in threads {
             t.join().unwrap();

@@ -1,3 +1,4 @@
+#![feature(type_name_of_val)]
 use std::any::Any;
 
 pub type Token = Box<dyn Any + Send>;

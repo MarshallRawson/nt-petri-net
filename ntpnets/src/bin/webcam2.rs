@@ -48,5 +48,5 @@ fn main() {
         ClientMode::Local()
     };
     plotmux.make_ready(Some(&multi_reactor.png()), plotmux_mode);
-    multi_reactor.run();
+    multi_reactor.run(false);
 }
