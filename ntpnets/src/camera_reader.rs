@@ -16,7 +16,6 @@ struct Image {
 #[ntpnet_transition(read: Input(E) -> Output(Image))]
 pub struct CameraReader {
     camera: Camera,
-    start_time: Instant,
     p: PlotSink,
 }
 impl CameraReader {
@@ -39,7 +38,6 @@ impl CameraReader {
             cam.start(&config).unwrap();
             Box::new(Self {
                 camera: cam,
-                start_time: Instant::now(),
                 p: plotsink,
             })
         })

@@ -48,10 +48,6 @@ impl VoiceFaceSync {
     }
     fn audio(&mut self, i: AudioInput) -> AudioOutput {
         let (t, samples) = match i { AudioInput::Voice(Voice { audio: (t, samples) }) => (t, samples) };
-        self.process_audio(t, samples);
-        AudioOutput::VoiceEnable(VoiceEnable{ audio_enable: () })
-    }
-    fn process_audio(&mut self, t: Instant, samples: Vec<i16>) {
         if let Some(tl) = self.tl {
             self.p.plot_series_2d("", "audio timing residual",
                 (t - self.start).as_secs_f64(), (t - tl).as_secs_f64() - samples.len() as f64 / 44100.
@@ -65,6 +61,7 @@ impl VoiceFaceSync {
         }
         self.p.plot_line_2d("", "", self.audio.iter().enumerate().map(|(x, y)| (x as f64, *y as f64)).collect());
         self.tl = Some(t);
+        AudioOutput::VoiceEnable(VoiceEnable{ audio_enable: () })
     }
     fn video(&mut self, _i: VideoInput) -> VideoOutput {
         //let (t, samples) = match i { Input::VoiceFace(VoiceFace { audio: (t, samples), faces: _}) => (t, samples) };

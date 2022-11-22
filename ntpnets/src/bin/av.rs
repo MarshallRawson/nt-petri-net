@@ -34,9 +34,9 @@ fn main() {
     let r = MultiReactor::make(n,
         vec![
             HashSet::from(["sound_reader".into()]),
-            HashSet::from(["camera_reader".into(),]),
-            HashSet::from(["facial_recognition".into(),]),
-            HashSet::from(["sync".into(),])
+            HashSet::from(["camera_reader".into()]),
+            HashSet::from(["facial_recognition".into()]),
+            HashSet::from(["sync".into()]),
         ],
         &mut plotmux
     );

@@ -30,7 +30,7 @@ struct State {
     state_exists: HashSet<(String, TypeId)>,
 }
 impl State {
-    fn make(mut places: HashMap<String, HashMap<TypeId, VecDeque<Token>>>, input_places: HashMap<String, Receiver<(TypeId, Token)>>, output_places: HashMap<String, Sender<(TypeId, Token)>>) -> Self {
+    fn make(places: HashMap<String, HashMap<TypeId, VecDeque<Token>>>, input_places: HashMap<String, Receiver<(TypeId, Token)>>, output_places: HashMap<String, Sender<(TypeId, Token)>>) -> Self {
         let state = {
             let mut state = HashMap::new();
             for (place_name, ty_v) in places.iter() {
@@ -166,7 +166,9 @@ impl WorkCluster {
                             .iter()
                             .map(|(edge, ty)| {
                                 (
-                                    in_edge_to_place.get_by_left(edge).unwrap().clone(),
+                                    in_edge_to_place.get_by_left(edge)
+                                        .expect(&format!("{}: {} not found on left of {:#?}", name, edge, in_edge_to_place))
+                                        .clone(),
                                     ty.clone(),
                                 )
                             })
@@ -238,13 +240,11 @@ impl WorkCluster {
                                 }
                                 let mut out_map = HashMap::new();
                                 let elapsed = (Instant::now() - start).as_secs_f64();
-                                let nonblocking_time = elapsed - last_nonblocking_time;
-                                self.plot_sink.plot_series_2d("reactor timing", "nonblocking", elapsed, nonblocking_time);
+                                self.plot_sink.plot_series_2d("reactor timing", "nonblocking", elapsed, elapsed - last_nonblocking_time);
                                 t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
                                 let elapsed2 = (Instant::now() - start).as_secs_f64();
                                 last_nonblocking_time = elapsed2;
-                                let t_time = elapsed2 - elapsed;
-                                self.plot_sink.plot_series_2d("reactor timing", &t_name, elapsed2, t_time);
+                                self.plot_sink.plot_series_2d("reactor timing", &t_name, elapsed2, elapsed2 - elapsed);
                                 for ((e_name, ty), t) in out_map.into_iter() {
                                     let place = t_run
                                         .out_edge_to_place
@@ -254,6 +254,7 @@ impl WorkCluster {
                                     self.state.push(&(place, ty), t);
                                 }
                                 blocked = false;
+                                break;
                             }
                         }
                     }
