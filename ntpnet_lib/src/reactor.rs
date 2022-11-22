@@ -114,7 +114,9 @@ impl WorkCluster {
                             .iter()
                             .map(|(edge, ty)| {
                                 (
-                                    in_edge_to_place.get_by_left(edge).unwrap().clone(),
+                                    in_edge_to_place.get_by_left(edge).expect(
+                                        &format!("{}: in edge {} not found on the left of {:#?}", name, edge, in_edge_to_place)
+                                    ).clone(),
                                     ty.clone(),
                                 )
                             })

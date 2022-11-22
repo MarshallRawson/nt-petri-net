@@ -28,7 +28,7 @@ pub struct BBox {
 
 pub struct Face {
     bbox: BBox,
-    image: RgbImage,
+    pub image: RgbImage,
 }
 
 #[derive(ntpnet_macro::TransitionOutputTokens)]
