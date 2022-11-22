@@ -1,7 +1,7 @@
 use image::RgbImage;
-use rscam::{Camera, Config};
 use ntpnet_lib::TransitionMaker;
 use plotmux::plotsink::PlotSink;
+use rscam::{Camera, Config};
 use std::time::Instant;
 
 #[derive(ntpnet_macro::TransitionInputTokens)]
@@ -27,14 +27,25 @@ impl CameraReader {
                 format: b"RGB3",
                 ..Default::default()
             };
-            plotsink.println2("debug",&format!(
-                "frame rate: {} / {} Hz", config.interval.1, config.interval.0
-            ));
-            plotsink.println2("debug",&format!("resolution: {} x {} Hz",
-                 config.resolution.0, config.resolution.1
-            ));
-            plotsink.println2("debug",&format!("format: {}", std::str::from_utf8(config.format).unwrap()));
-            plotsink.println2("debug",&format!("nbuffers: {}", config.nbuffers));
+            plotsink.println2(
+                "debug",
+                &format!(
+                    "frame rate: {} / {} Hz",
+                    config.interval.1, config.interval.0
+                ),
+            );
+            plotsink.println2(
+                "debug",
+                &format!(
+                    "resolution: {} x {} Hz",
+                    config.resolution.0, config.resolution.1
+                ),
+            );
+            plotsink.println2(
+                "debug",
+                &format!("format: {}", std::str::from_utf8(config.format).unwrap()),
+            );
+            plotsink.println2("debug", &format!("nbuffers: {}", config.nbuffers));
             cam.start(&config).unwrap();
             Box::new(Self {
                 camera: cam,
@@ -47,6 +58,8 @@ impl CameraReader {
         let now = Instant::now();
         let rgb_frame =
             RgbImage::from_raw(frame.resolution.0, frame.resolution.1, frame.to_vec()).unwrap();
-        Output::Image(Image { image: (now, rgb_frame) })
+        Output::Image(Image {
+            image: (now, rgb_frame),
+        })
     }
 }

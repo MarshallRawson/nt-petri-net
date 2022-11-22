@@ -2,7 +2,7 @@ use ntpnets::camera_reader::CameraReader;
 use ntpnets::image_consumer::ImageConsumer;
 
 use ntpnet_lib::{net::Net, reactor::Reactor};
-use plotmux::plotmux::{PlotMux, ClientMode};
+use plotmux::plotmux::{ClientMode, PlotMux};
 
 use clap::Parser;
 #[derive(Parser)]
@@ -23,10 +23,7 @@ fn main() {
         .place_to_transition("E", "_enable", "camera_reader")
         .add_transition(
             "camera_reader",
-            CameraReader::maker(
-                args.fps,
-                plotmux.add_plot_sink("camera_reader"),
-            ),
+            CameraReader::maker(args.fps, plotmux.add_plot_sink("camera_reader")),
         )
         .add_transition(
             "image_consumer",

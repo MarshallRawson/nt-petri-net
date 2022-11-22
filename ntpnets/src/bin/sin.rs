@@ -29,7 +29,7 @@ mod sin {
 }
 
 use ntpnet_lib::{net::Net, reactor::Reactor};
-use plotmux::plotmux::{PlotMux, ClientMode};
+use plotmux::plotmux::{ClientMode, PlotMux};
 
 fn main() {
     let mut plotmux = PlotMux::make();

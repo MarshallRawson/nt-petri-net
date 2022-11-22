@@ -1,11 +1,11 @@
+use byteorder::{ByteOrder, LittleEndian};
+use libpulse_binding::sample::{Format, Spec};
 use libpulse_simple_binding::Simple;
 use libpulse_sys::stream::pa_stream_direction_t as Direction;
-use libpulse_binding::sample::{Spec, Format};
-use std::time::{Instant, Duration};
-use byteorder::{ByteOrder, LittleEndian};
+use std::time::{Duration, Instant};
 
-use ntpnet_macro;
 use ntpnet_lib;
+use ntpnet_macro;
 use plotmux::plotsink::PlotSink;
 
 #[derive(ntpnet_macro::TransitionInputTokens)]
@@ -15,7 +15,7 @@ struct Enable {
 
 #[derive(ntpnet_macro::TransitionOutputTokens)]
 struct Samples {
-    samples: (Instant, Vec::<i16>),
+    samples: (Instant, Vec<i16>),
 }
 
 #[derive(ntpnet_macro::Transition)]
@@ -38,21 +38,23 @@ impl SoundReader {
                 rate: 44100,
             };
             let bytes_per_sample = 2; // sizeof(i16) / sizeof(u8) = 2
-            // sec * (samples / sec) * (bytes / sample)
-            let sec_per_sample = 1./30.;
-            let data_block = f64::round(sec_per_sample * spec.rate as f64) as usize * bytes_per_sample;
+                                      // sec * (samples / sec) * (bytes / sample)
+            let sec_per_sample = 1. / 30.;
+            let data_block =
+                f64::round(sec_per_sample * spec.rate as f64) as usize * bytes_per_sample;
             // sec * (samples / sec)
             let sample_block = f64::round(sec_per_sample * spec.rate as f64) as usize;
             let simp = Simple::new(
-                None,                // Use the default server
-                "FooApp",            // Our application’s name
-                Direction::Record,   // We want a playback stream
-                None,                // Use the default device
-                "Music",             // Description of our stream
-                &spec,               // Our sample format
-                None,                // Use default channel map
-                None                 // Use default buffering attributes
-            ).unwrap();
+                None,              // Use the default server
+                "FooApp",          // Our application’s name
+                Direction::Record, // We want a playback stream
+                None,              // Use the default device
+                "Music",           // Description of our stream
+                &spec,             // Our sample format
+                None,              // Use default channel map
+                None,              // Use default buffering attributes
+            )
+            .unwrap();
             let latency = simp.get_latency().unwrap();
             plotsink.println2("debug", &format!("latency: {:?}", latency));
             Box::new(SoundReader {
@@ -68,19 +70,23 @@ impl SoundReader {
     }
     fn f(&mut self, _i: Input) -> Output {
         match self.simp.read(self.data.as_mut_slice()) {
-            Err(e) => self.p.println2("Err", &format!("{}", e.to_string().unwrap())),
-            Ok(_) => {},
+            Err(e) => self
+                .p
+                .println2("Err", &format!("{}", e.to_string().unwrap())),
+            Ok(_) => {}
         }
         let now = Instant::now();
         let samples = {
             let mut samples = vec![0; self.sample_block];
             for i in 0..self.sample_block {
-                samples[i] = LittleEndian::read_i16(&self.data[i*2..i*2+2]);
+                samples[i] = LittleEndian::read_i16(&self.data[i * 2..i * 2 + 2]);
             }
             samples
         };
         self.last_time = Some(now);
         self.count += 1;
-        Output::Samples(Samples { samples: (now - self.latency, samples) })
+        Output::Samples(Samples {
+            samples: (now - self.latency, samples),
+        })
     }
 }

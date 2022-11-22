@@ -38,7 +38,6 @@ impl State {
             .iter()
             .filter_map(|(k, v)| if *v > 0 { Some(k.clone()) } else { None })
             .collect::<_>();
-
         Self {
             places: places,
             state: state,
@@ -114,9 +113,13 @@ impl WorkCluster {
                             .iter()
                             .map(|(edge, ty)| {
                                 (
-                                    in_edge_to_place.get_by_left(edge).expect(
-                                        &format!("{}: in edge {} not found on the left of {:#?}", name, edge, in_edge_to_place)
-                                    ).clone(),
+                                    in_edge_to_place
+                                        .get_by_left(edge)
+                                        .expect(&format!(
+                                            "{}: in edge {} not found on the left of {:#?}",
+                                            name, edge, in_edge_to_place
+                                        ))
+                                        .clone(),
                                     ty.clone(),
                                 )
                             })
@@ -141,7 +144,7 @@ impl WorkCluster {
                         description: d,
                         in_edge_to_place: in_edge_to_place,
                         out_edge_to_place: out_edge_to_place,
-                    }
+                    },
                 )
             })
             .collect::<HashMap<_, _>>();
@@ -153,9 +156,11 @@ impl WorkCluster {
     }
     pub fn run(mut self) {
         let start = Instant::now();
-        self.plot_sink.plot_series_2d("reactor timing", "nonblocking", 0.0, 0.0);
+        self.plot_sink
+            .plot_series_2d("reactor timing", "nonblocking", 0.0, 0.0);
         for (t_name, _t_run) in &self.transitions {
-            self.plot_sink.plot_series_2d("reactor timing", t_name, 0.0, 0.0);
+            self.plot_sink
+                .plot_series_2d("reactor timing", t_name, 0.0, 0.0);
         }
         let mut blocked = false;
         while !blocked {
@@ -181,11 +186,21 @@ impl WorkCluster {
                             }
                             let mut out_map = HashMap::new();
                             let elapsed = (Instant::now() - start).as_secs_f64();
-                            self.plot_sink.plot_series_2d("reactor timing", "nonblocking", elapsed, elapsed - last_nonblocking_time);
+                            self.plot_sink.plot_series_2d(
+                                "reactor timing",
+                                "nonblocking",
+                                elapsed,
+                                elapsed - last_nonblocking_time,
+                            );
                             t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
                             let elapsed2 = (Instant::now() - start).as_secs_f64();
                             last_nonblocking_time = elapsed2;
-                            self.plot_sink.plot_series_2d("reactor timing", t_name, elapsed2, elapsed2 - elapsed);
+                            self.plot_sink.plot_series_2d(
+                                "reactor timing",
+                                t_name,
+                                elapsed2,
+                                elapsed2 - elapsed,
+                            );
                             for ((e_name, ty), t) in out_map.into_iter() {
                                 let place = t_run
                                     .out_edge_to_place

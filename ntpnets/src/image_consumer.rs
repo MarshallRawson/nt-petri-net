@@ -2,7 +2,7 @@ use fft2d::slice::{fft_2d, ifft_2d};
 use image::buffer::ConvertBuffer;
 use image::{GrayImage, RgbImage};
 use ntpnet_lib::TransitionMaker;
-use plotmux::plotsink::{PlotSink, ImageCompression};
+use plotmux::plotsink::{ImageCompression, PlotSink};
 use rustfft::num_complex::Complex;
 use std::time::Instant;
 
@@ -26,7 +26,8 @@ impl ImageConsumer {
     fn consume(&mut self, i: Input) -> Output {
         let image: GrayImage = match i {
             Input::Image(Image { image: (_, image) }) => image,
-        }.convert();
+        }
+        .convert();
         let original_image = &image;
         let width = image.width() as usize;
         let height = image.height() as usize;
@@ -48,8 +49,13 @@ impl ImageConsumer {
         let image: RgbImage = GrayImage::from_raw(width as _, height as _, image)
             .unwrap()
             .convert();
-        self.p.plot_image("ifft(fft(image))", image.convert(), ImageCompression::Lvl3);
-        self.p.plot_image("original image", original_image.convert(), ImageCompression::Lvl3);
+        self.p
+            .plot_image("ifft(fft(image))", image.convert(), ImageCompression::Lvl3);
+        self.p.plot_image(
+            "original image",
+            original_image.convert(),
+            ImageCompression::Lvl3,
+        );
         Output::Out(Out { out: () })
     }
 }

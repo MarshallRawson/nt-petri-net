@@ -1,5 +1,6 @@
 use bincode;
 use crossbeam_channel::{bounded, Receiver, Select, Sender};
+use image::{ImageBuffer, Rgb, RgbImage};
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::env;
@@ -8,7 +9,6 @@ use std::net::{TcpListener, TcpStream}; //, IpAddr, Ipv4Addr, Shutdown};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
-use image::{Rgb, RgbImage, ImageBuffer};
 
 use crate::plotsink::PlotSink;
 
@@ -52,7 +52,10 @@ impl PlotableString {
             Some(c) => Some(c.to_string()),
             None => None,
         };
-        PlotableData::String(PlotableString { channel: channel, s: s.into() })
+        PlotableData::String(PlotableString {
+            channel: channel,
+            s: s.into(),
+        })
     }
 }
 
@@ -82,7 +85,7 @@ impl Series2d {
             channel: channel,
             series: series,
             x: x,
-            y: y
+            y: y,
         })
     }
 }
@@ -170,10 +173,10 @@ fn make_client(png_path: Option<&PathBuf>, mode: ClientMode) -> TcpStream {
                 .arg(format!("localhost:{}", port))
                 .spawn()
                 .expect("starting plotmuxui");
-        },
+        }
         ClientMode::Remote(addr) => {
             println!("cargo run --bin plotmuxui -- --addr {}", addr);
-        },
+        }
     }
     let (client, _socket) = listener.accept().unwrap();
     client
@@ -196,10 +199,12 @@ impl PlotMux {
         self.receivers.push(receiver.clone());
         PlotSink::make(name.into(), c, (sender, receiver))
     }
-    pub fn make_ready(mut self, png_path: Option<&PathBuf>, client: ClientMode) -> std::thread::JoinHandle<()> {
-        self.client = Some(make_client(
-            png_path, client
-        ));
+    pub fn make_ready(
+        mut self,
+        png_path: Option<&PathBuf>,
+        client: ClientMode,
+    ) -> std::thread::JoinHandle<()> {
+        self.client = Some(make_client(png_path, client));
         thread::spawn(move || self.spin())
     }
     fn spin(mut self) {

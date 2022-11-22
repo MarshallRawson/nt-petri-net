@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::NamedTempFile;
 
-
 use crate::{Token, TransitionMaker};
 pub struct Net {
     pub transitions: HashMap<String, TransitionMaker>,
@@ -29,11 +28,22 @@ impl Net {
             tp_edges: HashMap::new(),
         }
     }
-    pub fn split(&mut self, transitions: &HashSet<String>, input_places: &HashSet<String>, output_places: &HashSet<String>, contained_places: &HashSet<String>) -> Self {
+    pub fn split(
+        &mut self,
+        transitions: &HashSet<String>,
+        input_places: &HashSet<String>,
+        output_places: &HashSet<String>,
+        contained_places: &HashSet<String>,
+    ) -> Self {
         let mut right = Self::make();
         for t_name in transitions {
-            right.transitions.insert(t_name.clone(), self.transitions.remove(t_name).unwrap());
-            right.transition_to_places.insert(t_name.clone(), self.transition_to_places.remove(t_name).unwrap());
+            right
+                .transitions
+                .insert(t_name.clone(), self.transitions.remove(t_name).unwrap());
+            right.transition_to_places.insert(
+                t_name.clone(),
+                self.transition_to_places.remove(t_name).unwrap(),
+            );
             for p_name in &right.transition_to_places[t_name] {
                 let id = (t_name.clone(), p_name.clone());
                 let edge = self.tp_edges.remove(&id).unwrap();
@@ -41,8 +51,13 @@ impl Net {
             }
         }
         for p_name in contained_places {
-            right.places.insert(p_name.clone(), self.places.remove(p_name).unwrap());
-            right.place_to_transitions.insert(p_name.clone(), self.place_to_transitions.remove(p_name).unwrap());
+            right
+                .places
+                .insert(p_name.clone(), self.places.remove(p_name).unwrap());
+            right.place_to_transitions.insert(
+                p_name.clone(),
+                self.place_to_transitions.remove(p_name).unwrap(),
+            );
             for t_name in &right.place_to_transitions[p_name] {
                 let id = (p_name.clone(), t_name.clone());
                 let edge = self.pt_edges.remove(&id).unwrap();
@@ -50,13 +65,20 @@ impl Net {
             }
         }
         for p_name in input_places {
-            right.places.insert(p_name.clone(), self.places.remove(p_name).unwrap());
+            right
+                .places
+                .insert(p_name.clone(), self.places.remove(p_name).unwrap());
             let intersecting_transitions = self.place_to_transitions[p_name]
                 .intersection(transitions)
                 .cloned()
                 .collect::<HashSet<_>>();
-            self.place_to_transitions.insert(p_name.clone(), &self.place_to_transitions[p_name] - transitions);
-            right.place_to_transitions.insert(p_name.clone(), intersecting_transitions);
+            self.place_to_transitions.insert(
+                p_name.clone(),
+                &self.place_to_transitions[p_name] - transitions,
+            );
+            right
+                .place_to_transitions
+                .insert(p_name.clone(), intersecting_transitions);
             for t_name in &right.place_to_transitions[p_name] {
                 let id = (p_name.clone(), t_name.clone());
                 let edge = self.pt_edges.remove(&id).unwrap();
@@ -72,7 +94,8 @@ impl Net {
     pub fn add_transition(mut self, name: &str, t: TransitionMaker) -> Self {
         self.transitions.insert(name.into(), t);
         if !self.transition_to_places.contains_key(name) {
-            self.transition_to_places.insert(name.into(), HashSet::new());
+            self.transition_to_places
+                .insert(name.into(), HashSet::new());
         }
         self
     }
@@ -81,7 +104,8 @@ impl Net {
             self.places.insert(name.into(), HashMap::new());
         }
         if !self.place_to_transitions.contains_key(name) {
-            self.place_to_transitions.insert(name.into(), HashSet::new());
+            self.place_to_transitions
+                .insert(name.into(), HashSet::new());
         }
         self
     }
@@ -108,7 +132,8 @@ impl Net {
             if !self.places.contains_key(place) {
                 self.places.insert(place.into(), HashMap::new());
             }
-            self.place_to_transitions.insert(place.into(), HashSet::new());
+            self.place_to_transitions
+                .insert(place.into(), HashSet::new());
             self.place_to_transitions
                 .get_mut(place)
                 .unwrap()
@@ -125,8 +150,10 @@ impl Net {
             if !self.places.contains_key(place) {
                 self.places.insert(place.into(), HashMap::new());
             }
-            self.transition_to_places.insert(transition.into(), HashSet::new());
-            self.transition_to_places.get_mut(transition)
+            self.transition_to_places
+                .insert(transition.into(), HashSet::new());
+            self.transition_to_places
+                .get_mut(transition)
                 .unwrap()
                 .insert(place.into());
         }
@@ -234,7 +261,10 @@ use std::fmt::Debug;
 impl Debug for Net {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Net")
-            .field("transitions", &self.transitions.iter().map(|(k, _)| k).collect::<Vec<_>>())
+            .field(
+                "transitions",
+                &self.transitions.iter().map(|(k, _)| k).collect::<Vec<_>>(),
+            )
             .field("places", &self.places)
             .field("transition_to_places", &self.transition_to_places)
             .field("place_to_transitions", &self.place_to_transitions)
