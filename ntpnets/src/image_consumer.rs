@@ -4,6 +4,7 @@ use image::{GrayImage, RgbImage};
 use ntpnet_lib::TransitionMaker;
 use plotmux::plotsink::{PlotSink, ImageCompression};
 use rustfft::num_complex::Complex;
+use std::time::Instant;
 
 #[derive(ntpnet_macro::TransitionOutputTokens)]
 struct Out {
@@ -11,7 +12,7 @@ struct Out {
 }
 #[derive(ntpnet_macro::TransitionInputTokens)]
 struct Image {
-    image: RgbImage,
+    image: (Instant, RgbImage),
 }
 #[derive(ntpnet_macro::Transition)]
 #[ntpnet_transition(consume: Input(Image) -> Output(Out))]
@@ -24,7 +25,7 @@ impl ImageConsumer {
     }
     fn consume(&mut self, i: Input) -> Output {
         let image: GrayImage = match i {
-            Input::Image(Image { image }) => image,
+            Input::Image(Image { image: (_, image) }) => image,
         }.convert();
         let original_image = &image;
         let width = image.width() as usize;
