@@ -22,7 +22,7 @@ fn main() {
         .place_to_transition("sound_samples", "audio", "sync")
         .transition_to_place("sync", "audio_enable", "sound_enable")
         .transition_to_place("sync", "faces_enable", "face_enable")
-        .add_transition("sync", VoiceFaceSync::maker(plotmux.add_plot_sink("sync")))
+        .add_transition("sync", VoiceFaceSync::maker(30, plotmux.add_plot_sink("sync")))
         .place_to_transition("face_enable", "_e", "facial_recognition")
         .add_transition(
             "facial_recognition",

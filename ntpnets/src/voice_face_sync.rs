@@ -25,6 +25,11 @@ struct VoiceEnable {
     audio_enable: (),
 }
 
+enum PopRet {
+    TooEarly,
+    Some(Vec<f64>),
+    TooLate,
+}
 struct TimeSeries {
     data: VecDeque<f64>,
     fs: f64,
@@ -45,22 +50,29 @@ impl TimeSeries {
         self.data.extend(data);
         self.time_range.1 = end_time;
     }
-    fn pop(&mut self, end_time: Instant, duration: Duration) -> Vec<f64> {
-        let requested_samples = (duration.as_secs_f64() * self.fs) as usize;
-        let popped_samples = (((end_time - self.time_range.0).as_secs_f64() * self.fs) as usize)
-            .clamp(0, self.data.len());
-        self.time_range.0 = end_time;
-        self.data
-            .drain(0..popped_samples)
-            .enumerate()
-            .filter_map(|(i, x)| {
-                if popped_samples - i <= requested_samples {
-                    Some(x)
-                } else {
-                    None
-                }
-            })
-            .collect()
+    fn pop(&mut self, end_time: Instant, duration: Duration) -> PopRet {
+        if self.time_range.1 < end_time {
+            PopRet::TooLate
+        } else if end_time + duration < self.time_range.0 {
+            PopRet::TooEarly
+        } else {
+            let requested_samples = (duration.as_secs_f64() * self.fs) as usize;
+            let popped_samples = (((end_time - self.time_range.0).as_secs_f64() * self.fs) as usize)
+                .clamp(0, self.data.len());
+            self.time_range.0 = end_time;
+            PopRet::Some(self.data
+                .drain(0..popped_samples)
+                .enumerate()
+                .filter_map(|(i, x)| {
+                    if popped_samples - i <= requested_samples {
+                        Some(x)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+            )
+        }
     }
 }
 
@@ -68,21 +80,23 @@ impl TimeSeries {
 #[ntpnet_transition(video: VideoInput(Faces) -> VideoOutput(FacesEnable))]
 #[ntpnet_transition(audio: AudioInput(Voice) -> AudioOutput(VoiceEnable))]
 pub struct VoiceFaceSync {
+    fps: usize,
     p: PlotSink,
     start: Instant,
     last_audio: Option<Instant>,
     audio: Option<TimeSeries>,
-    last_video: Option<Instant>,
+    video: VecDeque<(Instant, Vec<Face>)>,
 }
 impl VoiceFaceSync {
-    pub fn maker(p: PlotSink) -> ntpnet_lib::TransitionMaker {
-        Box::new(|| {
+    pub fn maker(fps: usize, p: PlotSink) -> ntpnet_lib::TransitionMaker {
+        Box::new(move || {
             Box::new(VoiceFaceSync {
+                fps: fps,
                 p: p,
                 start: Instant::now(),
                 last_audio: None,
                 audio: None,
-                last_video: None,
+                video: VecDeque::new(),
             })
         })
     }
@@ -123,24 +137,39 @@ impl VoiceFaceSync {
         AudioOutput::VoiceEnable(VoiceEnable { audio_enable: () })
     }
     fn video(&mut self, i: VideoInput) -> VideoOutput {
-        let (t, faces) = match i {
+        self.video.push_back(match i {
             VideoInput::Faces(Faces { faces: (t, faces) }) => (t, faces),
-        };
-        for (i, face) in faces.into_iter().enumerate() {
-            self.p.plot_image(
-                &format!("face[{}]", i),
-                face.image,
-                ImageCompression::Lossless,
-            );
-        }
+        });
         if let Some(audio) = &mut self.audio {
-            if let Some(last_video) = self.last_video {
-                let l = audio.pop(t, t - last_video).len();
-                self.p
-                    .plot_series_2d("abc", "abc", (t - self.start).as_secs_f64(), l as f64);
+            loop {
+                if let Some((t, _)) = self.video.front() {
+                    match audio.pop(*t, Duration::from_secs_f64(1.0/self.fps as f64)) {
+                        PopRet::TooEarly => {
+                            self.video.pop_front().unwrap();
+                        },
+                        PopRet::Some(audio) => {
+                            let (t, faces) = self.video.pop_front().unwrap();
+                            let l = audio.len();
+                            self.p.plot_series_2d("audio samples per frame", "",
+                                (t - self.start).as_secs_f64(), l as f64
+                            );
+                            for (i, face) in faces.into_iter().enumerate() {
+                                self.p.plot_image(
+                                    &format!("face[{}]", i),
+                                    face.image,
+                                    ImageCompression::Lossless,
+                                );
+                            }
+                        },
+                        PopRet::TooLate => {
+                            break;
+                        },
+                    }
+                } else {
+                    break;
+                }
             }
         }
-        self.last_video = Some(t);
         VideoOutput::FacesEnable(FacesEnable { faces_enable: () })
     }
 }
