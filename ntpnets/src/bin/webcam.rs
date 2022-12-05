@@ -1,3 +1,6 @@
+#![feature(trait_upcasting)]
+#![allow(incomplete_features)]
+
 use ntpnets::camera_reader::CameraReader;
 use ntpnets::image_consumer::ImageConsumer;
 

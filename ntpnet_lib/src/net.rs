@@ -265,7 +265,7 @@ impl Debug for Net {
                 "transitions",
                 &self.transitions.iter().map(|(k, _)| k).collect::<Vec<_>>(),
             )
-            .field("places", &self.places)
+            //.field("places", &self.places)
             .field("transition_to_places", &self.transition_to_places)
             .field("place_to_transitions", &self.place_to_transitions)
             .field("pt_edges", &self.pt_edges)

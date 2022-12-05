@@ -1,3 +1,6 @@
+#![feature(trait_upcasting)]
+#![allow(incomplete_features)]
+
 use std::collections::HashSet;
 
 use ntpnet_lib::{multi_reactor::MultiReactor, net::Net};
@@ -49,5 +52,5 @@ fn main() {
         &mut plotmux,
     );
     plotmux.make_ready(Some(&r.png()), ClientMode::Local());
-    r.run(false);
+    r.run(true);
 }

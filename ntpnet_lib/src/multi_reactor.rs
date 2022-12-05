@@ -1,6 +1,6 @@
 use bimap::BiMap;
 use crossbeam_channel::{unbounded, Receiver, Select, Sender};
-use std::any::{type_name_of_val, TypeId};
+use std::any::TypeId;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::mem;
 use std::thread;
@@ -26,7 +26,7 @@ struct State {
     input_places_idx: BiMap<String, usize>,
     receivers: Vec<Receiver<(TypeId, Token)>>,
     output_places: HashMap<String, Sender<(TypeId, Token)>>,
-    state: HashMap<(String, TypeId), (String, usize)>,
+    state: HashMap<(String, TypeId), (usize, String)>,
     state_exists: HashSet<(String, TypeId)>,
 }
 impl State {
@@ -39,9 +39,8 @@ impl State {
             let mut state = HashMap::new();
             for (place_name, ty_v) in places.iter() {
                 for (ty, v) in ty_v.iter() {
-                    state.insert(
-                        (place_name.clone(), ty.clone()),
-                        (type_name_of_val(&v[0]).into(), v.len()),
+                    state.insert((place_name.clone(), ty.clone()),
+                        (v.len(), v[0].type_name().into())
                     );
                 }
             }
@@ -49,7 +48,7 @@ impl State {
         };
         let state_exists = state
             .iter()
-            .filter_map(|(k, v)| if v.1 > 0 { Some(k.clone()) } else { None })
+            .filter_map(|(k, v)| if v.0 > 0 { Some(k.clone()) } else { None })
             .collect::<_>();
         let mut input_places_idx = BiMap::new();
         let input_places = input_places
@@ -101,15 +100,15 @@ impl State {
     fn binary(&mut self, plot: Option<(&mut PlotSink, f64)>) -> &HashSet<(String, TypeId)> {
         self.try_rx();
         if let Some((plot, time)) = plot {
-            for ((place, _), (tname, len)) in &self.state {
-                plot.plot_series_2d("state", &format!("{}/{}", place, tname), time, *len as f64);
+            for ((place, _ty), (len, ty_name)) in &self.state {
+                plot.plot_series_2d("state", &format!("{}/{}", place, ty_name), time, *len as f64);
             }
         }
         &self.state_exists
     }
     fn pop(&mut self, p_ty: &(String, TypeId)) -> Token {
-        *&mut self.state.get_mut(p_ty).unwrap().1 -= 1;
-        if *&mut self.state.get_mut(p_ty).unwrap().1 == 0 {
+        *&mut self.state.get_mut(p_ty).unwrap().0 -= 1;
+        if self.state[p_ty].0 == 0 {
             self.state_exists.remove(p_ty);
         }
         self.places
@@ -130,7 +129,7 @@ impl State {
                     .unwrap()
                     .insert(p_ty.1.clone(), VecDeque::new());
                 self.state
-                    .insert(p_ty.clone(), (type_name_of_val(&t).into(), 0));
+                    .insert(p_ty.clone(), (0, t.type_name().to_string()));
             }
             self.places
                 .get_mut(&p_ty.0)
@@ -138,7 +137,7 @@ impl State {
                 .get_mut(&p_ty.1)
                 .unwrap()
                 .push_back(t);
-            *&mut self.state.get_mut(p_ty).unwrap().1 += 1;
+            *&mut self.state.get_mut(p_ty).unwrap().0 += 1;
             if !self.state_exists.contains(p_ty) {
                 self.state_exists.insert(p_ty.clone());
             }
@@ -232,7 +231,7 @@ impl WorkCluster {
             .plot_series_2d("reactor timing", "nonblocking", 0.0, 0.0);
         for (t_name, _t_run) in &self.transitions {
             self.plot_sink
-                .plot_series_2d("reactor timing", t_name, 0.0, 0.0);
+                .plot_series_2d("transition timing", t_name, 0.0, 0.0);
         }
         loop {
             let mut blocked = false;
@@ -274,7 +273,7 @@ impl WorkCluster {
                                 let elapsed2 = (Instant::now() - start).as_secs_f64();
                                 last_nonblocking_time = elapsed2;
                                 self.plot_sink.plot_series_2d(
-                                    "reactor timing",
+                                    "transition timing",
                                     &t_name,
                                     elapsed2,
                                     elapsed2 - elapsed,

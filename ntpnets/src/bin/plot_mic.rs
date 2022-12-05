@@ -1,3 +1,6 @@
+#![feature(trait_upcasting)]
+#![allow(incomplete_features)]
+
 use ntpnet_lib::{net::Net, reactor::Reactor};
 use ntpnets::plot_audio::PlotAudio;
 use ntpnets::sound_reader::SoundReader;

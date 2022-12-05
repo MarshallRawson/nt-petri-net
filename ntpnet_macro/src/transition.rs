@@ -11,7 +11,7 @@ pub fn impl_transition_macro(ast: &syn::DeriveInput) -> TokenStream {
     } else {
         quote! {}
     };
-    //#[derive(Debug)]
+    #[derive(Debug)]
     struct TransitionCallback {
         name: Ident,
         input: (Ident, Vec<Ident>),

@@ -1,3 +1,6 @@
+#![feature(trait_upcasting)]
+#![allow(incomplete_features)]
+
 mod sin {
     use ntpnet_lib::TransitionMaker;
     use plotmux::plotsink::PlotSink;
