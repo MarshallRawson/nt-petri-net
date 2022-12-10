@@ -4,7 +4,7 @@
 use ntpnets::camera_reader::CameraReader;
 use ntpnets::image_consumer::ImageConsumer;
 
-use ntpnet_lib::{multi_reactor::MultiReactor, net::Net};
+use ntpnet_lib::{multi_reactor::{MultiReactor, PlotOptions}, net::Net};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 use clap::Parser;
@@ -59,5 +59,5 @@ fn main() {
         ClientMode::Local()
     };
     plotmux.make_ready(Some(&multi_reactor.png()), plotmux_mode);
-    multi_reactor.run(false);
+    multi_reactor.run(PlotOptions::default());
 }

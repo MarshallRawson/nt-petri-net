@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 
-use ntpnet_lib::{multi_reactor::MultiReactor, net::Net};
+use ntpnet_lib::{multi_reactor::{MultiReactor, PlotOptions}, net::Net};
 use ntpnets::camera_reader::CameraReader;
 use ntpnets::facial_recognition::FacialRecognition;
 use ntpnets::sound_reader::SoundReader;
@@ -52,5 +52,9 @@ fn main() {
         &mut plotmux,
     );
     plotmux.make_ready(Some(&r.png()), ClientMode::Local());
-    r.run(true);
+    r.run(PlotOptions{
+        reactor_timing: true,
+        transition_timing: true,
+        state: true,
+    });
 }

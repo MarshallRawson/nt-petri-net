@@ -223,15 +223,19 @@ impl WorkCluster {
             plot_sink: plot_sink,
         }
     }
-    pub fn run(mut self, plot_state: bool) {
+    pub fn run(mut self, plot_options: PlotOptions) {
         let start = Instant::now();
-        self.plot_sink
-            .plot_series_2d("reactor timing", "blocking", 0.0, 0.0);
-        self.plot_sink
-            .plot_series_2d("reactor timing", "nonblocking", 0.0, 0.0);
-        for (t_name, _t_run) in &self.transitions {
+        if plot_options.reactor_timing {
             self.plot_sink
-                .plot_series_2d("transition timing", t_name, 0.0, 0.0);
+                .plot_series_2d("reactor timing", "blocking", 0.0, 0.0);
+            self.plot_sink
+                .plot_series_2d("reactor timing", "nonblocking", 0.0, 0.0);
+        }
+        if plot_options.transition_timing {
+            for (t_name, _t_run) in &self.transitions {
+                self.plot_sink
+                    .plot_series_2d("transition timing", t_name, 0.0, 0.0);
+            }
         }
         loop {
             let mut blocked = false;
@@ -241,7 +245,7 @@ impl WorkCluster {
                 for (t_name, t_run) in self.transitions.iter_mut() {
                     for (f_name, case) in &t_run.description.cases {
                         for (i, condition) in case.inputs.iter().enumerate() {
-                            let state_plotting = if plot_state {
+                            let state_plotting = if plot_options.state {
                                 Some((&mut self.plot_sink, (Instant::now() - start).as_secs_f64()))
                             } else {
                                 None
@@ -263,21 +267,25 @@ impl WorkCluster {
                                 }
                                 let mut out_map = HashMap::new();
                                 let elapsed = (Instant::now() - start).as_secs_f64();
-                                self.plot_sink.plot_series_2d(
-                                    "reactor timing",
-                                    "nonblocking",
-                                    elapsed,
-                                    elapsed - last_nonblocking_time,
-                                );
+                                if plot_options.reactor_timing {
+                                    self.plot_sink.plot_series_2d(
+                                        "reactor timing",
+                                        "nonblocking",
+                                        elapsed,
+                                        elapsed - last_nonblocking_time,
+                                    );
+                                }
                                 t_run.t.call(&f_name, i, &mut in_map, &mut out_map);
                                 let elapsed2 = (Instant::now() - start).as_secs_f64();
                                 last_nonblocking_time = elapsed2;
-                                self.plot_sink.plot_series_2d(
-                                    "transition timing",
-                                    &t_name,
-                                    elapsed2,
-                                    elapsed2 - elapsed,
-                                );
+                                if plot_options.transition_timing {
+                                    self.plot_sink.plot_series_2d(
+                                        "transition timing",
+                                        &t_name,
+                                        elapsed2,
+                                        elapsed2 - elapsed,
+                                    );
+                                }
                                 for ((e_name, ty), t) in out_map.into_iter() {
                                     let place = t_run
                                         .out_edge_to_place
@@ -293,16 +301,24 @@ impl WorkCluster {
                     }
                 }
             }
-            let elapsed = (Instant::now() - start).as_secs_f64();
-            self.state.block_rx();
-            let elapsed2 = (Instant::now() - start).as_secs_f64();
-            let blocking_time = elapsed2 - elapsed;
-            self.plot_sink
-                .plot_series_2d("reactor timing", "blocking", elapsed2, blocking_time);
+            if plot_options.reactor_timing {
+                let elapsed = (Instant::now() - start).as_secs_f64();
+                self.state.block_rx();
+                let elapsed2 = (Instant::now() - start).as_secs_f64();
+                let blocking_time = elapsed2 - elapsed;
+                self.plot_sink
+                    .plot_series_2d("reactor timing", "blocking", elapsed2, blocking_time);
+            }
         }
     }
 }
 
+#[derive(Default, Clone)]
+pub struct PlotOptions {
+    pub state: bool,
+    pub reactor_timing: bool,
+    pub transition_timing: bool,
+}
 pub struct MultiReactor {
     work_clusters: Vec<Box<dyn FnOnce() -> WorkCluster + Send>>,
     dots: Vec<(String, String)>,
@@ -481,10 +497,11 @@ impl MultiReactor {
             pseudo_hashes: pseudo_hashes,
         }
     }
-    pub fn run(self, state_plotting: bool) {
+    pub fn run(self, plot_options: PlotOptions) {
         let mut threads = vec![];
         for wc in self.work_clusters.into_iter() {
-            threads.push(thread::spawn(move || wc().run(state_plotting)));
+            let po = plot_options.clone();
+            threads.push(thread::spawn(move || wc().run(po)));
         }
         for t in threads {
             t.join().unwrap();
