@@ -7,6 +7,7 @@ edition = "2021"
 
 plotmux = { path = "../plotmux" }
 
+clap = { version = "4.0.7", features = ["derive"] }
 crossbeam-channel = "0.5.5"
 itertools = "0.10.3"
 tempfile = "3.3.0"

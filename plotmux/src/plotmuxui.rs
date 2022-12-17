@@ -4,14 +4,14 @@ use bincode;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use eframe;
 use eframe::egui;
-use eframe::egui::Color32;
-use eframe::egui::widgets::plot;
 use eframe::egui::widget_text::RichText;
+use eframe::egui::widgets::plot;
+use eframe::egui::Color32;
 use egui_extras::image::RetainedImage;
-use image::io::Reader as ImageReader;
 use image::buffer::ConvertBuffer;
+use image::io::Reader as ImageReader;
+use image::DynamicImage::{ImageRgb8, ImageRgba8};
 use image::RgbaImage;
-use image::DynamicImage::{ImageRgba8,ImageRgb8};
 use std::io::Read;
 use std::net::TcpStream;
 use std::thread;
@@ -85,7 +85,7 @@ impl PlotMuxUi {
         let graph_image = if let Some(graph_png_path) = graph_png_path {
             let graph_image0 = ImageReader::open(graph_png_path).unwrap();
             let graph_image1 = graph_image0.decode().unwrap();
-            let graph_image2 : RgbaImage = match graph_image1 {
+            let graph_image2: RgbaImage = match graph_image1 {
                 ImageRgba8(image) => image,
                 ImageRgb8(image) => image.convert(),
                 _ => panic!(),
@@ -115,7 +115,10 @@ impl PlotMuxUi {
         }
     }
     pub fn spin(mut self) {
-        let native_options = eframe::NativeOptions::default();
+        let native_options = eframe::NativeOptions {
+            follow_system_theme: true,
+            ..eframe::NativeOptions::default()
+        };
         eframe::run_native(
             "PlotMux",
             native_options,
@@ -140,7 +143,7 @@ impl eframe::App for PlotMuxUi {
             match new_data {
                 PlotableData::InitSource(name) => {
                     self.sources[idx] = Some(PlotSource::make(name));
-                },
+                }
                 _ => self.sources[idx].as_mut().unwrap().new_data(new_data),
             }
         }
@@ -148,9 +151,9 @@ impl eframe::App for PlotMuxUi {
             self.font_size += (ctx.input().zoom_delta() - 1.0) * 2.0;
         }
         self.font_size = self.font_size.clamp(5.0, 100.0);
-        let rich_text =  {
+        let rich_text = {
             let font = self.font_size;
-            move |string: &str| { RichText::new(string).size(font) }
+            move |string: &str| RichText::new(string).size(font)
         };
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.checkbox(&mut self.show_graph, rich_text("Graph"));
@@ -215,8 +218,9 @@ impl eframe::App for PlotMuxUi {
                                         for t in &self.sources[source_idx].as_ref().unwrap().texts {
                                             let text = match t {
                                                 (Some(t), text) => rich_text(
-                                                    &("[".to_string() + &t.1 + "]: " + &text)
-                                                ).color(Color32::from_rgb(t.0.0, t.0.1, t.0.2)),
+                                                    &("[".to_string() + &t.1 + "]: " + &text),
+                                                )
+                                                .color(Color32::from_rgb(t.0 .0, t.0 .1, t.0 .2)),
                                                 (None, text) => rich_text(text),
                                             };
                                             ui.label(text);
@@ -233,52 +237,55 @@ impl eframe::App for PlotMuxUi {
                                     ui.label(rich_text("Plot ratios:"));
                                     ui.add(egui::Slider::new(&mut self.plot_ratios, 0.1..=10.));
                                 });
-                                egui::ScrollArea::vertical()
-                                    .show(ui, |ui| {
-                                        for (plot_name, plot) in
-                                            &self.sources[source_idx].as_ref().unwrap().series_plots_2d {
-                                            ui.label(rich_text(plot_name));
-                                            plot::Plot::new(plot_name)
-                                                .view_aspect(self.plot_ratios)
-                                                .legend(plot::Legend::default())
-                                                .show(ui, |plot_ui| {
-                                                    for (name, (color, vec)) in plot
-                                                    {
-                                                        let plot_vec = {
-                                                            if self.series_2d_history <= 0.0 {
-                                                                self.series_2d_history = 0.0;
-                                                                vec.iter().cloned().collect()
-                                                            } else if let Some(start) =
-                                                                vec.iter().position(|&v| {
-                                                                    v.x > vec.back().unwrap().x
-                                                                        - self.series_2d_history
-                                                                })
-                                                            {
-                                                                vec.range(start..).cloned().collect::<Vec<_>>()
-                                                            } else {
-                                                                vec![]
-                                                            }
-                                                        };
-                                                        let line =
-                                                            plot::Line::new(plot::PlotPoints::Owned(plot_vec))
-                                                                .name(name)
-                                                                .color(egui::Color32::from_rgb(
-                                                                    color.0, color.1, color.2,
-                                                                ));
-                                                        plot_ui.line(line);
-                                                    }
-                                                });
-                                            }
-                                        });
+                                egui::ScrollArea::vertical().show(ui, |ui| {
+                                    for (plot_name, plot) in
+                                        &self.sources[source_idx].as_ref().unwrap().series_plots_2d
+                                    {
+                                        ui.label(rich_text(plot_name));
+                                        plot::Plot::new(plot_name)
+                                            .view_aspect(self.plot_ratios)
+                                            .legend(plot::Legend::default())
+                                            .show(ui, |plot_ui| {
+                                                for (name, (color, vec)) in plot {
+                                                    let plot_vec = {
+                                                        if self.series_2d_history <= 0.0 {
+                                                            self.series_2d_history = 0.0;
+                                                            vec.iter().cloned().collect()
+                                                        } else if let Some(start) =
+                                                            vec.iter().position(|&v| {
+                                                                v.x > vec.back().unwrap().x
+                                                                    - self.series_2d_history
+                                                            })
+                                                        {
+                                                            vec.range(start..)
+                                                                .cloned()
+                                                                .collect::<Vec<_>>()
+                                                        } else {
+                                                            vec![]
+                                                        }
+                                                    };
+                                                    let line = plot::Line::new(
+                                                        plot::PlotPoints::Owned(plot_vec),
+                                                    )
+                                                    .name(name)
+                                                    .color(egui::Color32::from_rgb(
+                                                        color.0, color.1, color.2,
+                                                    ));
+                                                    plot_ui.line(line);
+                                                }
+                                            });
+                                    }
+                                });
                             }
                             PlotMode::Image() => {
-                                egui::ScrollArea::both()
-                                    .show(ui, |ui| {
-                                        for (image_name, _, plot_image) in &self.sources[source_idx].as_ref().unwrap().image_plots {
-                                            ui.label(rich_text(image_name));
-                                            plot_image.show(ui);
-                                        }
-                                    });
+                                egui::ScrollArea::both().show(ui, |ui| {
+                                    for (image_name, _, plot_image) in
+                                        &self.sources[source_idx].as_ref().unwrap().image_plots
+                                    {
+                                        ui.label(rich_text(image_name));
+                                        plot_image.show(ui);
+                                    }
+                                });
                             }
                         },
                         None => (),

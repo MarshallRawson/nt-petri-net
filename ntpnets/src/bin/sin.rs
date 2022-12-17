@@ -1,3 +1,6 @@
+#![feature(trait_upcasting)]
+#![allow(incomplete_features)]
+
 mod sin {
     use ntpnet_lib::TransitionMaker;
     use plotmux::plotsink::PlotSink;
@@ -29,7 +32,7 @@ mod sin {
 }
 
 use ntpnet_lib::{net::Net, reactor::Reactor};
-use plotmux::plotmux::{PlotMux, ClientMode};
+use plotmux::plotmux::{ClientMode, PlotMux};
 
 fn main() {
     let mut plotmux = PlotMux::make();
