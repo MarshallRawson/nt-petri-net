@@ -45,6 +45,8 @@ pub struct PlotOptions {
     reactor_timing: bool,
     #[arg(short, long)]
     transition_timing: bool,
+    #[arg(short, long)]
+    monitor: bool,
 }
 
 impl From<&Option<ReactorOptions>> for PlotOptions {

@@ -44,21 +44,26 @@ impl TcpHandler {
         }
     }
     fn spin(mut self, ctx: egui::Context) {
-        thread::spawn(move || {
+        thread::Builder::new().name("plotmuxui-client".into()).spawn(move || {
             let mut decoder = snap::raw::Decoder::new();
             loop {
                 let mut len_buf =
                     vec![0; bincode::serialized_size::<usize>(&0_usize).unwrap() as usize];
-                self.stream.read_exact(&mut len_buf).unwrap();
-                let mut data_buf = vec![0; bincode::deserialize(&len_buf).unwrap()];
-                self.stream.read_exact(&mut data_buf).unwrap();
-                let data_buf = decoder.decompress_vec(&data_buf).unwrap();
-                self.sender
-                    .send(bincode::deserialize(&data_buf).unwrap())
-                    .unwrap();
-                ctx.request_repaint();
+                if let Ok(()) = self.stream.read_exact(&mut len_buf) {
+                    let mut data_buf = vec![0; bincode::deserialize(&len_buf).unwrap()];
+                    if let Err(_) = self.stream.read_exact(&mut data_buf) {
+                        continue;
+                    }
+                    let data_buf = decoder.decompress_vec(&data_buf).unwrap();
+                    if let Err(_) = self.sender.send(bincode::deserialize(&data_buf).unwrap()) {
+                        continue;
+                    }
+                    ctx.request_repaint();
+                } else {
+                    continue;
+                }
             }
-        });
+        }).expect("unable to spawn plotmuxui-client thread");
     }
 }
 

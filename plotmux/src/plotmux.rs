@@ -205,7 +205,7 @@ impl PlotMux {
         client: ClientMode,
     ) -> std::thread::JoinHandle<()> {
         self.client = Some(make_client(png_path, client));
-        thread::spawn(move || self.spin())
+        thread::Builder::new().name("plotmux-server".into()).spawn(move || self.spin()).expect("unable to spawn plotmux-server thread")
     }
     fn spin(mut self) {
         |rs: &[PlotReceiver]| -> () {
@@ -217,15 +217,21 @@ impl PlotMux {
             loop {
                 let oper = sel.select();
                 let idx = oper.index();
-                let data = oper.recv(&rs[idx]).unwrap();
-                let buf = bincode::serialize(&(idx, data)).unwrap();
-                let buf = encoder.compress_vec(&buf).unwrap();
-                self.client
-                    .as_mut()
-                    .unwrap()
-                    .write(&bincode::serialize(&buf.len()).unwrap())
-                    .unwrap();
-                self.client.as_mut().unwrap().write(&buf).unwrap();
+                if let Ok(data) = oper.recv(&rs[idx]) {
+                    let buf = bincode::serialize(&(idx, data)).unwrap();
+                    let buf = encoder.compress_vec(&buf).unwrap();
+                    if let Err(_) = self.client
+                        .as_mut()
+                        .unwrap()
+                        .write(&bincode::serialize(&buf.len()).unwrap()) {
+                            continue;
+                    }
+                    if let Err(_) = self.client.as_mut().unwrap().write(&buf) {
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
             }
         }(self.receivers.as_mut_slice());
     }
