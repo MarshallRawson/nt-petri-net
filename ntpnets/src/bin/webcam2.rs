@@ -8,8 +8,8 @@ use ntpnet_lib::{multi_reactor::MultiReactor, net::Net, ReactorOptions};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 use clap::Parser;
-use image::ImageBuffer;
 use std::collections::HashSet;
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -36,14 +36,7 @@ fn main() {
             "image_consumer",
             ImageConsumer::maker(plotmux.add_plot_sink("image_consumer")),
         )
-        .set_start_tokens(
-            "Image",
-            vec![Box::new(ImageBuffer::from_pixel(
-                1,
-                1,
-                image::Rgb([0_u8, 0, 0]),
-            ))],
-        )
+        .set_start_tokens("Image", vec![])
         .transition_to_place("camera_reader", "image", "Image")
         .place_to_transition("Image", "image", "image_consumer")
         .transition_to_place("image_consumer", "out", "E");

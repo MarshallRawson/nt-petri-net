@@ -90,7 +90,6 @@ impl Net {
         }
         right
     }
-
     pub fn add_transition(mut self, name: &str, t: TransitionMaker) -> Self {
         self.transitions.insert(name.into(), t);
         if !self.transition_to_places.contains_key(name) {
@@ -130,7 +129,7 @@ impl Net {
             s.insert(transition.into());
         } else {
             if !self.places.contains_key(place) {
-                self.places.insert(place.into(), HashMap::new());
+                self = self.add_place(place);
             }
             self.place_to_transitions
                 .insert(place.into(), HashSet::new());
@@ -144,12 +143,12 @@ impl Net {
         self
     }
     pub fn transition_to_place(mut self, transition: &str, edge: &str, place: &str) -> Self {
+        if !self.places.contains_key(place) {
+            self = self.add_place(place);
+        }
         if let Some(s) = self.transition_to_places.get_mut(transition) {
             s.insert(place.into());
         } else {
-            if !self.places.contains_key(place) {
-                self.places.insert(place.into(), HashMap::new());
-            }
             self.transition_to_places
                 .insert(transition.into(), HashSet::new());
             self.transition_to_places
@@ -228,6 +227,18 @@ impl Net {
         dot += "}";
         graphviz(&dot, self.pseudo_hash())
     }
+    pub fn start_state(&self) -> HashMap<(String, TypeId), (usize, &'static str)> {
+        let mut start_state = HashMap::new();
+        for (place_name, token_qs) in &self.places {
+            for (ty, token_q) in token_qs {
+                start_state.insert(
+                    (place_name.clone(), *ty),
+                    (token_q.len(), token_q[0].type_name()),
+                );
+            }
+        }
+        start_state
+    }
 }
 pub fn graphviz(dot: &String, hash: u64) -> PathBuf {
     let graph_cache = env::current_exe()
@@ -265,7 +276,7 @@ impl Debug for Net {
                 "transitions",
                 &self.transitions.iter().map(|(k, _)| k).collect::<Vec<_>>(),
             )
-            //.field("places", &self.places)
+            .field("places", &self.places)
             .field("transition_to_places", &self.transition_to_places)
             .field("place_to_transitions", &self.place_to_transitions)
             .field("pt_edges", &self.pt_edges)
