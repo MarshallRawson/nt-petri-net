@@ -1,5 +1,6 @@
 use bincode;
 use crossbeam_channel::{bounded, Receiver, Select, Sender};
+use image::{ImageBuffer, Rgb, RgbImage};
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::env;
@@ -8,7 +9,6 @@ use std::net::{TcpListener, TcpStream}; //, IpAddr, Ipv4Addr, Shutdown};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
-use image::{Rgb, RgbImage, ImageBuffer};
 
 use crate::plotsink::PlotSink;
 
@@ -34,7 +34,9 @@ pub enum PlotableData {
     String(PlotableString),
     InitSeriesPlot2d(String),
     InitSeries2d(InitSeries2d),
-    Series2d(Plotable2d),
+    Series2d(Series2d),
+    Series2dVec(Series2dVec),
+    Line2d(Series2dVec),
     InitImage(PlotableInitImage),
     DeltaImage(PlotableDeltaImage),
 }
@@ -50,7 +52,10 @@ impl PlotableString {
             Some(c) => Some(c.to_string()),
             None => None,
         };
-        PlotableData::String(PlotableString { channel: channel, s: s.into() })
+        PlotableData::String(PlotableString {
+            channel: channel,
+            s: s.into(),
+        })
     }
 }
 
@@ -68,20 +73,42 @@ impl InitSeries2d {
     }
 }
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Plotable2d {
+pub struct Series2d {
     pub channel: usize,
     pub series: usize,
     pub x: f64,
     pub y: f64,
 }
-impl Plotable2d {
+impl Series2d {
     pub fn make(channel: usize, series: usize, x: f64, y: f64) -> PlotableData {
-        PlotableData::Series2d(Plotable2d {
+        PlotableData::Series2d(Series2d {
             channel: channel,
             series: series,
             x: x,
-            y: y
+            y: y,
         })
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Series2dVec {
+    pub channel: usize,
+    pub series: usize,
+    pub data: Vec<(f64, f64)>,
+}
+impl Series2dVec {
+    fn make(channel: usize, series: usize, data: Vec<(f64, f64)>) -> Self {
+        Series2dVec {
+            channel: channel,
+            series: series,
+            data: data,
+        }
+    }
+    pub fn make_series(channel: usize, series: usize, data: Vec<(f64, f64)>) -> PlotableData {
+        PlotableData::Series2dVec(Self::make(channel, series, data))
+    }
+    pub fn make_line(channel: usize, series: usize, data: Vec<(f64, f64)>) -> PlotableData {
+        PlotableData::Line2d(Self::make(channel, series, data))
     }
 }
 
@@ -146,10 +173,10 @@ fn make_client(png_path: Option<&PathBuf>, mode: ClientMode) -> TcpStream {
                 .arg(format!("localhost:{}", port))
                 .spawn()
                 .expect("starting plotmuxui");
-        },
+        }
         ClientMode::Remote(addr) => {
             println!("cargo run --bin plotmuxui -- --addr {}", addr);
-        },
+        }
     }
     let (client, _socket) = listener.accept().unwrap();
     client
@@ -172,10 +199,12 @@ impl PlotMux {
         self.receivers.push(receiver.clone());
         PlotSink::make(name.into(), c, (sender, receiver))
     }
-    pub fn make_ready(mut self, png_path: Option<&PathBuf>, client: ClientMode) -> std::thread::JoinHandle<()> {
-        self.client = Some(make_client(
-            png_path, client
-        ));
+    pub fn make_ready(
+        mut self,
+        png_path: Option<&PathBuf>,
+        client: ClientMode,
+    ) -> std::thread::JoinHandle<()> {
+        self.client = Some(make_client(png_path, client));
         thread::spawn(move || self.spin())
     }
     fn spin(mut self) {
