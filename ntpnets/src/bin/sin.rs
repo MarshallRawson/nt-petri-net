@@ -43,6 +43,7 @@ fn main() {
         .transition_to_place("sin", "t", "time");
     let png = n.png();
     let r = Reactor::make(n, &mut plotmux);
-    plotmux.make_ready(Some(&png), ClientMode::Local());
+    let pm = plotmux.make_ready(Some(&png), ClientMode::Local());
     r.run();
+    drop(pm);
 }

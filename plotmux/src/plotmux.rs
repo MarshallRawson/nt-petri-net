@@ -1,5 +1,6 @@
 use bincode;
 use crossbeam_channel::{bounded, Receiver, Select, Sender};
+use defer::defer;
 use image::{ImageBuffer, Rgb, RgbImage};
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
@@ -203,36 +204,47 @@ impl PlotMux {
         mut self,
         png_path: Option<&PathBuf>,
         client: ClientMode,
-    ) -> std::thread::JoinHandle<()> {
+    ) -> impl Drop {
         self.client = Some(make_client(png_path, client));
-        thread::Builder::new().name("plotmux-server".into()).spawn(move || self.spin()).expect("unable to spawn plotmux-server thread")
+        let join_handle = thread::Builder::new()
+            .name("plotmux-server".into())
+            .spawn(move || self.spin())
+            .expect("unable to spawn plotmux-server thread");
+        defer(|| join_handle.join().unwrap())
     }
     fn spin(mut self) {
-        |rs: &[PlotReceiver]| -> () {
-            let mut sel = Select::new();
-            for r in rs {
-                sel.recv(&r);
-            }
-            let mut encoder = snap::raw::Encoder::new();
-            loop {
-                let oper = sel.select();
-                let idx = oper.index();
-                if let Ok(data) = oper.recv(&rs[idx]) {
-                    let buf = bincode::serialize(&(idx, data)).unwrap();
-                    let buf = encoder.compress_vec(&buf).unwrap();
-                    if let Err(_) = self.client
-                        .as_mut()
-                        .unwrap()
-                        .write(&bincode::serialize(&buf.len()).unwrap()) {
-                            continue;
-                    }
-                    if let Err(_) = self.client.as_mut().unwrap().write(&buf) {
-                        continue;
-                    }
-                } else {
-                    continue;
+        let mut plot_idx: Vec<_> = (0..self.receivers.len()).collect();
+        while self.receivers.len() > 0 {
+            let remove_idx = |rs: &[PlotReceiver]| -> usize {
+                let mut sel = Select::new();
+                for r in rs {
+                    sel.recv(&r);
                 }
-            }
-        }(self.receivers.as_mut_slice());
+                let mut encoder = snap::raw::Encoder::new();
+                loop {
+                    let oper = sel.select();
+                    let idx = oper.index();
+                    match oper.recv(&rs[idx]) {
+                        Ok(data) => {
+                            let buf = bincode::serialize(&(plot_idx[idx], data)).unwrap();
+                            let buf = encoder.compress_vec(&buf).unwrap();
+                            if let Err(_) = self.client
+                                .as_mut()
+                                .unwrap()
+                                .write(&bincode::serialize(&buf.len()).unwrap()) {
+                                    continue;
+                            }
+                            if let Err(_) = self.client.as_mut().unwrap().write(&buf) {
+                                continue;
+                            }
+                        }, Err(_) => {
+                            return idx;
+                        },
+                    }
+                }
+            }(self.receivers.as_mut_slice());
+            self.receivers.remove(remove_idx);
+            plot_idx.remove(remove_idx);
+        }
     }
 }

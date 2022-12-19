@@ -42,6 +42,7 @@ fn main() {
     } else {
         ClientMode::Local()
     };
-    plotmux.make_ready(Some(&png), plotmux_mode);
+    let pm = plotmux.make_ready(Some(&png), plotmux_mode);
     r.run();
+    drop(pm);
 }

@@ -53,6 +53,7 @@ fn main() {
     } else {
         ClientMode::Local()
     };
-    plotmux.make_ready(Some(&multi_reactor.png()), plotmux_mode);
+    let pm = plotmux.make_ready(Some(&multi_reactor.png()), plotmux_mode);
     multi_reactor.run(&args.reactor_plot_options);
+    drop(pm);
 }

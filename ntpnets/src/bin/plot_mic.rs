@@ -33,6 +33,7 @@ fn main() {
         .place_to_transition("audio", "audio", "plot_audio");
     let wc = vec![n.transitions.keys().cloned().collect()];
     let r = MultiReactor::make(n, wc, &mut plotmux);
-    plotmux.make_ready(Some(&r.png()), ClientMode::Local());
+    let pm = plotmux.make_ready(Some(&r.png()), ClientMode::Local());
     r.run(&args.reactor_plot_options);
+    drop(pm);
 }

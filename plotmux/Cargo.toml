@@ -12,6 +12,7 @@ path = "src/bin/plotmuxui.rs"
 
 [dependencies]
 crossbeam-channel = "0.5.5"
+defer = "0.1.0"
 sha1 = "0.10.0"
 eframe = "0.19.0"
 egui_extras = { version = "0.19.0", features = ["image"] }
