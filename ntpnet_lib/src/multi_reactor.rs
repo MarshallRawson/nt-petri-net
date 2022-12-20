@@ -1,7 +1,7 @@
 use bimap::BiMap;
 use crossbeam_channel::{bounded, unbounded, Receiver, Select, Sender};
 use std::any::TypeId;
-use std::collections::{HashMap, HashSet, VecDeque, BTreeSet};
+use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::mem;
 use std::thread;
 
@@ -115,7 +115,7 @@ impl State {
                     let p_name = self.input_places_idx.get_by_right(&index).unwrap().clone();
                     self.push_local(&(p_name, ty), token);
                     false
-                },
+                }
                 StateBlockable::Terminate(_) => true,
             }
         } else {
@@ -139,7 +139,7 @@ impl State {
                         let p_name = self.input_places_idx.get_by_right(&index).unwrap().clone();
                         self.push_local(&(p_name, ty), token);
                         false
-                    },
+                    }
                     StateBlockable::Terminate(_) => true,
                 }
             } else {
@@ -200,7 +200,9 @@ impl State {
     fn push(&mut self, p_ty: &(String, TypeId), t: Token) {
         self.state_delta.push(p_ty, t.type_name());
         if let Some(out_place) = self.output_places.get_mut(&p_ty.0) {
-            out_place.send(StateBlockable::Tokens((p_ty.1.clone(), t))).unwrap();
+            out_place
+                .send(StateBlockable::Tokens((p_ty.1.clone(), t)))
+                .unwrap();
         } else {
             self.push_local(p_ty, t);
         }
@@ -269,7 +271,8 @@ impl WorkCluster {
                             .iter()
                             .map(|(edge, ty)| {
                                 (
-                                    out_edge_to_place.get_by_left(edge)
+                                    out_edge_to_place
+                                        .get_by_left(edge)
                                         .expect(&format!(
                                             "{}: {} not found on left of {:#?}",
                                             name, edge, out_edge_to_place
@@ -309,13 +312,12 @@ impl WorkCluster {
             .iter()
             .map(|(_, t_run)| &t_run.description.cases)
             .flatten()
-            .map(|(_, case)| case.inputs
-                .iter()
-                .map(|cond| cond
+            .map(|(_, case)| {
+                case.inputs
                     .iter()
-                    .cloned()
-                    .collect()
-                ).collect::<HashSet<_>>())
+                    .map(|cond| cond.iter().cloned().collect())
+                    .collect::<HashSet<_>>()
+            })
             .flatten()
             .collect()
     }
@@ -526,8 +528,7 @@ impl MultiReactor {
                 } else {
                     let in_c = in_c.iter().collect::<Vec<_>>();
                     let (sender, receiver) = unbounded();
-                    let mut senders: HashMap<usize, Sender<_>> = in_c
-                        [..in_c.len() - 1]
+                    let mut senders: HashMap<usize, Sender<_>> = in_c[..in_c.len() - 1]
                         .iter()
                         .map(|idx| (**idx, sender.clone()))
                         .collect::<_>();
@@ -535,17 +536,16 @@ impl MultiReactor {
                     Some((p_name.clone(), (senders, Some((out_c, receiver)))))
                 }
             })
-            .collect::<HashMap<
-                String,
-                (
-                    HashMap<usize, Sender<_>>,
-                    Option<(usize, Receiver<_>)>,
-                ),
-            >>();
+            .collect::<HashMap<String, (HashMap<usize, Sender<_>>, Option<(usize, Receiver<_>)>)>>(
+            );
         let mut dots = vec![];
         let mut pseudo_hashes = vec![];
         let (state_delta_notifier, state_delta_monitor) = unbounded();
-        let start_state = net.start_state().into_iter().map(|((p, ty), (s, n))| ((p, ty), (s as i64, n))).collect();
+        let start_state = net
+            .start_state()
+            .into_iter()
+            .map(|((p, ty), (s, n))| ((p, ty), (s as i64, n)))
+            .collect();
         Self {
             work_clusters: work_clusters
                 .iter()
@@ -601,9 +601,17 @@ impl MultiReactor {
                     let plotsink =
                         plotmux.add_plot_sink(&format!("reactor/work_cluster/{:?}", cluster));
                     let sdn = state_delta_notifier.clone();
-                    let f: Box<dyn FnOnce(Receiver<StateBlockable>) -> WorkCluster + Send> = Box::new(move |exit_rx| {
-                        WorkCluster::make(net_split, input_places, output_places, plotsink, sdn, exit_rx)
-                    });
+                    let f: Box<dyn FnOnce(Receiver<StateBlockable>) -> WorkCluster + Send> =
+                        Box::new(move |exit_rx| {
+                            WorkCluster::make(
+                                net_split,
+                                input_places,
+                                output_places,
+                                plotsink,
+                                sdn,
+                                exit_rx,
+                            )
+                        });
                     f
                 })
                 .collect(),
@@ -625,97 +633,114 @@ impl MultiReactor {
             exit_txs.push(exit_tx);
             let po = plot_options.clone();
             let nbs = nonblocking_sender.clone();
-            threads.push(thread::Builder::new().name(format!("work-cluster-{}", i)).spawn(move || {
-                let wc = wc(exit_rx);
-                nbs.send(wc.nonblocking_states()).unwrap();
-                wc.run(po);
-            }).expect(&format!("unable to spawn work-cluster-{} thread", i)));
+            threads.push(
+                thread::Builder::new()
+                    .name(format!("work-cluster-{}", i))
+                    .spawn(move || {
+                        let wc = wc(exit_rx);
+                        nbs.send(wc.nonblocking_states()).unwrap();
+                        wc.run(po);
+                    })
+                    .expect(&format!("unable to spawn work-cluster-{} thread", i)),
+            );
         }
         let nonblocking_states = {
             (0..threads.len())
-                .map(|_| {
-                    nonblocking_receiver.recv().unwrap()
-                })
+                .map(|_| nonblocking_receiver.recv().unwrap())
                 .into_iter()
                 .flatten()
                 .collect::<HashSet<BTreeSet<_>>>()
         };
-        threads.push(thread::Builder::new().name("monitor".into()).spawn(move || {
-            for ((place, _ty), (len, ty_name)) in &self.start_state {
-                if plot_options.monitor {
-                    self.monitor_plot.plot_series_2d(
-                        "pseudo-state",
-                        &format!("{}/{}", place, ty_name),
-                        0.0,
-                        *len as f64,
-                    );
-                }
-            }
-            let mut state = self.start_state;
-            let mut state_binary: BTreeSet::<(String, TypeId)> = state.keys().cloned().collect();
-            let start = Instant::now();
-            loop {
-                let mut deadlock = true;
-                for nonblocking_state in &nonblocking_states {
-                    if nonblocking_state.is_subset(&state_binary) {
-                        deadlock = false;
-                        break;
-                    }
-                }
-                if deadlock {
-                    self.monitor_plot.println(&format!("exiting with state: {:?}", state.iter().filter(|((_, _), (s, _))| *s != 0).collect::<Vec<_>>()));
-                    break;
-                }
-                if let Ok(state_delta) = self.state_delta_monitor.recv() {
-                    let now = (Instant::now() - start).as_secs_f64();
-                    for s in state_delta.sub {
-                        *&mut state.get_mut(&s).unwrap().0 -= 1;
-                        if !state_delta.add.contains_key(&s) && plot_options.monitor {
-                            self.monitor_plot.plot_series_2d(
-                                "pseudo-state",
-                                &format!("{}/{}", &s.0, &state[&s].1),
-                                now,
-                                state[&s].0 as f64,
-                            );
-                        }
-                        if state[&s].0 == 0 {
-                            state_binary.remove(&s);
-                        }
-                    }
-                    for ((place, ty), ty_name) in state_delta.add {
-                        let key = (place, ty);
-                        if !state.contains_key(&key) {
-                            state.insert(key.clone(), (1, ty_name));
-                            state_binary.insert(key.clone());
-                        } else {
-                            *&mut state.get_mut(&key).unwrap().0 += 1;
-                        }
+        threads.push(
+            thread::Builder::new()
+                .name("monitor".into())
+                .spawn(move || {
+                    for ((place, _ty), (len, ty_name)) in &self.start_state {
                         if plot_options.monitor {
                             self.monitor_plot.plot_series_2d(
                                 "pseudo-state",
-                                &format!("{}/{}", &key.0, &ty_name),
-                                now,
-                                state[&key].0 as f64,
+                                &format!("{}/{}", place, ty_name),
+                                0.0,
+                                *len as f64,
                             );
                         }
-                        if state[&key].0 == 1 {
-                            state_binary.insert(key);
+                    }
+                    let mut state = self.start_state;
+                    let mut state_binary: BTreeSet<(String, TypeId)> =
+                        state.keys().cloned().collect();
+                    let start = Instant::now();
+                    loop {
+                        let mut deadlock = true;
+                        for nonblocking_state in &nonblocking_states {
+                            if nonblocking_state.is_subset(&state_binary) {
+                                deadlock = false;
+                                break;
+                            }
+                        }
+                        if deadlock {
+                            self.monitor_plot.println(&format!(
+                                "exiting with state: {:?}",
+                                state
+                                    .iter()
+                                    .filter(|((_, _), (s, _))| *s != 0)
+                                    .collect::<Vec<_>>()
+                            ));
+                            break;
+                        }
+                        if let Ok(state_delta) = self.state_delta_monitor.recv() {
+                            let now = (Instant::now() - start).as_secs_f64();
+                            for s in state_delta.sub {
+                                *&mut state.get_mut(&s).unwrap().0 -= 1;
+                                if !state_delta.add.contains_key(&s) && plot_options.monitor {
+                                    self.monitor_plot.plot_series_2d(
+                                        "pseudo-state",
+                                        &format!("{}/{}", &s.0, &state[&s].1),
+                                        now,
+                                        state[&s].0 as f64,
+                                    );
+                                }
+                                if state[&s].0 == 0 {
+                                    state_binary.remove(&s);
+                                }
+                            }
+                            for ((place, ty), ty_name) in state_delta.add {
+                                let key = (place, ty);
+                                if !state.contains_key(&key) {
+                                    state.insert(key.clone(), (1, ty_name));
+                                    state_binary.insert(key.clone());
+                                } else {
+                                    *&mut state.get_mut(&key).unwrap().0 += 1;
+                                }
+                                if plot_options.monitor {
+                                    self.monitor_plot.plot_series_2d(
+                                        "pseudo-state",
+                                        &format!("{}/{}", &key.0, &ty_name),
+                                        now,
+                                        state[&key].0 as f64,
+                                    );
+                                }
+                                if state[&key].0 == 1 {
+                                    state_binary.insert(key);
+                                }
+                            }
+                        } else {
+                            break;
                         }
                     }
-                } else {
-                    break;
-                }
-            }
-            for tx in exit_txs {
-                match tx.send(StateBlockable::Terminate(())) { _ => {} }
-            }
-        }).expect("unable to spawn monitor thread"));
+                    for tx in exit_txs {
+                        match tx.send(StateBlockable::Terminate(())) {
+                            _ => {}
+                        }
+                    }
+                })
+                .expect("unable to spawn monitor thread"),
+        );
         for (i, t) in threads.into_iter().enumerate() {
             match t.join() {
-                Ok(_) => {},
-                Err(_) => {
-                    self.reactor_plot.println(&format!("failed to join work-cluster-{}", i))
-                }
+                Ok(_) => {}
+                Err(_) => self
+                    .reactor_plot
+                    .println(&format!("failed to join work-cluster-{}", i)),
             }
         }
     }

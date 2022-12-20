@@ -200,11 +200,7 @@ impl PlotMux {
         self.receivers.push(receiver.clone());
         PlotSink::make(name.into(), c, (sender, receiver))
     }
-    pub fn make_ready(
-        mut self,
-        png_path: Option<&PathBuf>,
-        client: ClientMode,
-    ) -> impl Drop {
+    pub fn make_ready(mut self, png_path: Option<&PathBuf>, client: ClientMode) -> impl Drop {
         self.client = Some(make_client(png_path, client));
         let join_handle = thread::Builder::new()
             .name("plotmux-server".into())
@@ -228,18 +224,21 @@ impl PlotMux {
                         Ok(data) => {
                             let buf = bincode::serialize(&(plot_idx[idx], data)).unwrap();
                             let buf = encoder.compress_vec(&buf).unwrap();
-                            if let Err(_) = self.client
+                            if let Err(_) = self
+                                .client
                                 .as_mut()
                                 .unwrap()
-                                .write(&bincode::serialize(&buf.len()).unwrap()) {
-                                    continue;
+                                .write(&bincode::serialize(&buf.len()).unwrap())
+                            {
+                                continue;
                             }
                             if let Err(_) = self.client.as_mut().unwrap().write(&buf) {
                                 continue;
                             }
-                        }, Err(_) => {
+                        }
+                        Err(_) => {
                             return idx;
-                        },
+                        }
                     }
                 }
             }(self.receivers.as_mut_slice());
