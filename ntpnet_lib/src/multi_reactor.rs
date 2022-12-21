@@ -143,7 +143,7 @@ impl State {
                     StateBlockable::Terminate(_) => true,
                 }
             } else {
-                true
+                break;
             };
         }
         mem::swap(&mut self.receivers, &mut rxs);
@@ -683,13 +683,6 @@ impl MultiReactor {
                         }
                     }
                     if deadlock {
-                        self.monitor_plot.println(&format!(
-                            "exiting with state: {:?}",
-                            state
-                                .iter()
-                                .filter(|((_, _), (s, _))| *s != 0)
-                                .collect::<Vec<_>>()
-                        ));
                         break;
                     }
                     if let Ok(state_delta) = self.state_delta_monitor.recv() {
@@ -724,7 +717,7 @@ impl MultiReactor {
                                     state[&key].0 as f64,
                                 );
                             }
-                            if state[&key].0 == 1 {
+                            if state[&key].0 >= 1 {
                                 state_binary.insert(key);
                             }
                         }
@@ -732,10 +725,22 @@ impl MultiReactor {
                         break;
                     }
                 }
-                for tx in exit_txs {
+                for (i, tx) in exit_txs.into_iter().enumerate() {
                     match tx.send(StateBlockable::Terminate(())) {
-                        _ => {}
+                        Ok(_) => {},
+                        Err(_) => {
+                            self.monitor_plot.println(&format!("failed to terminate work-cluster-{}", i));
+                        }
                     }
+                }
+                if plot_options.monitor {
+                    self.monitor_plot.println(&format!(
+                        "exiting with state: {:?}",
+                        state
+                            .iter()
+                            .filter(|((_, _), (s, _))| *s != 0)
+                            .collect::<Vec<_>>()
+                    ));
                 }
             })
             .expect("unable to spawn monitor thread");
