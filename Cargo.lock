@@ -1459,6 +1459,7 @@ dependencies = [
  "bimap",
  "clap",
  "crossbeam-channel",
+ "defer",
  "itertools",
  "plotmux",
  "tempfile",

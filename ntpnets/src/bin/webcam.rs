@@ -1,7 +1,7 @@
 use ntpnets::camera_reader::CameraReader;
 use ntpnets::image_consumer::ImageConsumer;
 
-use ntpnet_lib::{net::Net, reactor::Reactor, Token};
+use ntpnet_lib::{net::Net, reactor::reactor, Token};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 use clap::Parser;
@@ -33,13 +33,13 @@ fn main() {
         .place_to_transition("Image", "image", "image_consumer")
         .transition_to_place("image_consumer", "out", "E");
     let png = n.png();
-    let r = Reactor::make(n, &mut plotmux);
+    let r = reactor(n, &mut plotmux);
     let plotmux_mode = if let Some(addr) = args.remote_plotmux {
         ClientMode::Remote(addr)
     } else {
         ClientMode::Local()
     };
     let pm = plotmux.make_ready(Some(&png), plotmux_mode);
-    r.run();
+    r.run(&None);
     drop(pm);
 }
