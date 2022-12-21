@@ -70,7 +70,7 @@ impl State {
                 for (ty, v) in ty_v.iter() {
                     state.insert(
                         (place_name.clone(), ty.clone()),
-                        (v.len(), v[0].type_name().into()),
+                        (v.len(), (*v[0]).type_name().into()),
                     );
                 }
             }
@@ -184,7 +184,7 @@ impl State {
                 .unwrap()
                 .insert(p_ty.1.clone(), VecDeque::new());
             self.state
-                .insert(p_ty.clone(), (0, t.type_name().to_string()));
+                .insert(p_ty.clone(), (0, (*t).type_name().to_string()));
         }
         self.places
             .get_mut(&p_ty.0)
@@ -198,7 +198,7 @@ impl State {
         }
     }
     fn push(&mut self, p_ty: &(String, TypeId), t: Token) {
-        self.state_delta.push(p_ty, t.type_name());
+        self.state_delta.push(p_ty, (*t).type_name());
         if let Some(out_place) = self.output_places.get_mut(&p_ty.0) {
             out_place
                 .send(StateBlockable::Tokens((p_ty.1.clone(), t)))
@@ -727,9 +727,10 @@ impl MultiReactor {
                 }
                 for (i, tx) in exit_txs.into_iter().enumerate() {
                     match tx.send(StateBlockable::Terminate(())) {
-                        Ok(_) => {},
+                        Ok(_) => {}
                         Err(_) => {
-                            self.monitor_plot.println(&format!("failed to terminate work-cluster-{}", i));
+                            self.monitor_plot
+                                .println(&format!("failed to terminate work-cluster-{}", i));
                         }
                     }
                 }
@@ -744,19 +745,30 @@ impl MultiReactor {
                 }
             })
             .expect("unable to spawn monitor thread");
-        let mut end_state = HashMap::new();
-        for (i, t) in threads.into_iter().enumerate() {
-            match t.join() {
-                Ok(state) => {
-                    for (k, v) in state {
-                        end_state.insert(k, v);
+        let end_state = threads
+            .into_iter()
+            .enumerate()
+            .fold(HashMap::new(), |mut acc, (i, t)| {
+                match t.join() {
+                    Ok(state) => {
+                        for (k, v) in state.into_iter().filter(|(_place, vecs)| {
+                            for (_ty, vec) in vecs {
+                                if vec.len() > 0 {
+                                    return true;
+                                }
+                            }
+                            false
+                        }) {
+                            acc.insert(k, v);
+                        }
+                    }
+                    Err(_) => {
+                        self.reactor_plot
+                            .println(&format!("failed to join work-cluster-{}", i));
                     }
                 }
-                Err(_) => self
-                    .reactor_plot
-                    .println(&format!("failed to join work-cluster-{}", i)),
-            }
-        }
+                acc
+            });
         monitor_thread.join().unwrap();
         end_state
     }

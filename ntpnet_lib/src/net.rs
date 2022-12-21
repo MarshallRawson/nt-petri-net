@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::NamedTempFile;
 
-use crate::{Token, TransitionMaker};
+use crate::{NamedAny, Token, TransitionMaker};
 pub struct Net {
     pub transitions: HashMap<String, TransitionMaker>,
     pub places: HashMap<String, HashMap<TypeId, VecDeque<Token>>>,

@@ -12,9 +12,9 @@ pub fn impl_transition_input_tokens_macro(ast: &syn::DeriveInput) -> TokenStream
                 let field_str = field.to_string();
                 quote! {
                     #acc
-                    #field: *(map.remove_entry(
-                            &(#field_str.to_string(), ::std::any::TypeId::of::<#ty>())
-                        ).unwrap().1 as Box<dyn ::std::any::Any>).downcast::<_>().unwrap(),
+                    #field: *map.remove_entry(
+                        &(#field_str.to_string(), ::std::any::TypeId::of::<#ty>())
+                    ).unwrap().1.downcast::<#ty>().unwrap(),
                 }
             });
 

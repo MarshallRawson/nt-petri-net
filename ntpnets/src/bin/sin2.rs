@@ -1,8 +1,5 @@
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
-
 use clap::Parser;
-use ntpnet_lib::{multi_reactor::MultiReactor, net::Net, ReactorOptions};
+use ntpnet_lib::{multi_reactor::MultiReactor, net::Net, ReactorOptions, Token};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 #[derive(Parser)]
@@ -112,7 +109,7 @@ fn main() {
     let n = Net::make()
         .set_start_tokens(
             "time",
-            vec![Box::new((0.0, std::f64::consts::PI * 2., 1000_usize))],
+            vec![Token::new((0.0, std::f64::consts::PI * 2., 1000_usize))],
         )
         .place_to_transition("time", "t", "sin_gen")
         .add_transition(
@@ -129,5 +126,5 @@ fn main() {
     let wc = vec![n.transitions.keys().cloned().collect()];
     let r = MultiReactor::make(n, wc, &mut plotmux);
     let _pm = plotmux.make_ready(Some(&r.png()), ClientMode::Local());
-    r.run(&args.reactor_plot_options);
+    println!("{:?}", r.run(&args.reactor_plot_options));
 }

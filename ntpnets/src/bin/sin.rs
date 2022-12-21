@@ -1,6 +1,3 @@
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
-
 mod sin {
     use ntpnet_lib::TransitionMaker;
     use plotmux::plotsink::PlotSink;
@@ -31,13 +28,13 @@ mod sin {
     }
 }
 
-use ntpnet_lib::{net::Net, reactor::Reactor};
+use ntpnet_lib::{net::Net, reactor::Reactor, Token};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 fn main() {
     let mut plotmux = PlotMux::make();
     let n = Net::make()
-        .set_start_tokens("time", vec![Box::new(0.)])
+        .set_start_tokens("time", vec![Token::new(0.)])
         .place_to_transition("time", "t", "sin")
         .add_transition("sin", sin::Sin::maker(plotmux.add_plot_sink("sin")))
         .transition_to_place("sin", "t", "time");

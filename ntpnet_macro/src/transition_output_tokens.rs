@@ -10,7 +10,7 @@ pub fn impl_transition_output_tokens_macro(ast: &syn::DeriveInput) -> TokenStrea
             let field_str = field.to_string();
             quote!{
                 #acc
-                map.insert((#field_str.to_string(), ::std::any::TypeId::of::<#ty>()), Box::new(self.#field));
+                map.insert((#field_str.to_string(), ::std::any::TypeId::of::<#ty>()), ::ntpnet_lib::Token::new(self.#field));
             }
         }
     );

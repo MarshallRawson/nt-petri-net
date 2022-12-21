@@ -4,22 +4,36 @@
 use std::any::Any;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
+use std::ops::Deref;
 
 pub trait NamedAny: Any {
     fn type_name(&self) -> &'static str;
 }
-
 impl<T: Any> NamedAny for T {
     fn type_name(&self) -> &'static str {
         std::any::type_name::<T>()
     }
 }
 
-pub type Token = Box<dyn NamedAny + Send>;
-
+pub struct Token(Box<dyn NamedAny + Send>);
+impl Token {
+    pub fn new<T: NamedAny + Send>(t: T) -> Self {
+        assert!(!<dyn Any>::is::<Self>(&t));
+        Self(Box::new(t))
+    }
+    pub fn downcast<T: 'static>(self) -> Result<Box<T>, Box<(dyn Any)>> {
+        <Box<dyn Any>>::downcast::<T>(self.0)
+    }
+}
 impl Debug for Token {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        (self as &dyn Any).fmt(f)
+        f.debug_struct("Token").finish_non_exhaustive()
+    }
+}
+impl Deref for Token {
+    type Target = dyn NamedAny + Send;
+    fn deref(&self) -> &Self::Target {
+        &*self.0
     }
 }
 

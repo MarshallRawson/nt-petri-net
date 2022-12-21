@@ -1,10 +1,7 @@
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
-
 use ntpnets::camera_reader::CameraReader;
 use ntpnets::image_consumer::ImageConsumer;
 
-use ntpnet_lib::{net::Net, reactor::Reactor};
+use ntpnet_lib::{net::Net, reactor::Reactor, Token};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 use clap::Parser;
@@ -22,7 +19,7 @@ fn main() {
 
     let mut plotmux = PlotMux::make();
     let n = Net::make()
-        .set_start_tokens("E", vec![Box::new(())])
+        .set_start_tokens("E", vec![Token::new(())])
         .place_to_transition("E", "_enable", "camera_reader")
         .add_transition(
             "camera_reader",

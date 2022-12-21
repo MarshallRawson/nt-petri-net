@@ -1,8 +1,5 @@
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
-
 use clap::Parser;
-use ntpnet_lib::{multi_reactor::MultiReactor, net::Net, ReactorOptions};
+use ntpnet_lib::{multi_reactor::MultiReactor, net::Net, ReactorOptions, Token};
 use ntpnets::plot_audio::PlotAudio;
 use ntpnets::sound_reader::SoundReader;
 use plotmux::plotmux::{ClientMode, PlotMux};
@@ -17,7 +14,7 @@ fn main() {
     let args = Args::parse();
     let mut plotmux = PlotMux::make();
     let n = Net::make()
-        .set_start_tokens("e", vec![Box::new(())])
+        .set_start_tokens("e", vec![Token::new(())])
         .place_to_transition("e", "_e", "sound_reader")
         .add_transition(
             "sound_reader",
