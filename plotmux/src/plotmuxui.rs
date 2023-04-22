@@ -127,7 +127,7 @@ impl PlotMuxUi {
             follow_system_theme: true,
             ..eframe::NativeOptions::default()
         };
-        eframe::run_native(
+        let _ = eframe::run_native(
             "PlotMux",
             native_options,
             Box::new(|cc| {
@@ -155,9 +155,11 @@ impl eframe::App for PlotMuxUi {
                 _ => self.sources[idx].as_mut().unwrap().new_data(new_data),
             }
         }
-        if ctx.input().modifiers.shift {
-            self.font_size += (ctx.input().zoom_delta() - 1.0) * 2.0;
-        }
+        ctx.input(|i| {
+            if i.modifiers.shift {
+                self.font_size += (i.zoom_delta() - 1.0) * 2.0;
+            }
+        });
         self.font_size = self.font_size.clamp(5.0, 100.0);
         let rich_text = {
             let font = self.font_size;
