@@ -12,6 +12,8 @@ use std::collections::HashSet;
 struct Args {
     #[arg(short, long, default_value_t = 30)]
     fps: u32,
+    #[arg(short, long, default_value_t = String::from("/dev/video0"))]
+    dev: String,
     #[arg(short, long)]
     remote_plotmux: Option<String>,
     #[command(subcommand)]
@@ -27,7 +29,7 @@ fn main() {
         .place_to_transition("E", "_enable", "camera_reader")
         .add_transition(
             "camera_reader",
-            CameraReader::maker(args.fps, plotmux.add_plot_sink("camera_reader")),
+            CameraReader::maker(args.fps, args.dev, plotmux.add_plot_sink("camera_reader")),
         )
         .add_transition(
             "image_consumer",

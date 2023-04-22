@@ -19,9 +19,9 @@ pub struct CameraReader {
     _p: PlotSink,
 }
 impl CameraReader {
-    pub fn maker(fps: u32, mut plotsink: PlotSink) -> TransitionMaker {
+    pub fn maker(fps: u32, dev: String, mut plotsink: PlotSink) -> TransitionMaker {
         Box::new(move || {
-            let mut cam = Camera::new("/dev/video0").unwrap();
+            let mut cam = Camera::new(&dev).unwrap();
             let config = Config {
                 interval: (1, fps),
                 format: b"RGB3",
