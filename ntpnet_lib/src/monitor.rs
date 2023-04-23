@@ -1,11 +1,14 @@
-use std::thread;
-use defer::defer;
-use std::collections::{BTreeSet, HashMap, HashSet};
-use std::any::TypeId;
-use std::time::Instant;
 use crossbeam_channel::{Receiver, Sender};
+use defer::defer;
+use std::any::TypeId;
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::thread;
+use std::time::Instant;
 
-use crate::{PlotOptions, state::{StateBlockable, StateDelta}};
+use crate::{
+    state::{StateBlockable, StateDelta},
+    PlotOptions,
+};
 use plotmux::plotsink::PlotSink;
 
 pub fn monitor_thread(
@@ -86,8 +89,7 @@ pub fn monitor_thread(
             }
             for (i, tx) in exit_txs.into_iter().enumerate() {
                 if let Err(_) = tx.send(StateBlockable::Terminate(())) {
-                    plot_sink
-                        .println(&format!("failed to terminate work-cluster-{}", i));
+                    plot_sink.println(&format!("failed to terminate work-cluster-{}", i));
                 }
             }
             if plot_options.monitor {
@@ -100,6 +102,6 @@ pub fn monitor_thread(
                 ));
             }
         })
-    .expect("unable to spawn monitor thread");
+        .expect("unable to spawn monitor thread");
     defer(|| t.join().expect("unable to join monitor thread"))
 }

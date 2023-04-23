@@ -1,12 +1,18 @@
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use std::any::TypeId;
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
-use std::thread;
 use std::mem;
+use std::thread;
 
 use plotmux::{plotmux::PlotMux, plotsink::PlotSink};
 
-use crate::{work_cluster::WorkCluster, net::Net, PlotOptions, ReactorOptions, Token, state::{StateBlockable, StateDelta}, monitor::monitor_thread};
+use crate::{
+    monitor::monitor_thread,
+    net::Net,
+    state::{StateBlockable, StateDelta},
+    work_cluster::WorkCluster,
+    PlotOptions, ReactorOptions, Token,
+};
 
 pub struct MultiReactor {
     work_clusters: Vec<Box<dyn FnOnce(Receiver<StateBlockable>) -> WorkCluster + Send>>,

@@ -1,12 +1,11 @@
-use std::any::TypeId;
-use std::mem;
-use crossbeam_channel::{Receiver, Sender, Select};
 use bimap::BiMap;
+use crossbeam_channel::{Receiver, Select, Sender};
+use std::any::TypeId;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::mem;
 
-use plotmux::plotsink::PlotSink;
 use crate::Token;
-
+use plotmux::plotsink::PlotSink;
 
 #[derive(Debug)]
 pub struct StateDelta {
@@ -26,7 +25,12 @@ impl StateDelta {
     fn push(&mut self, p_ty: &(String, TypeId), ty_name: &'static str) {
         self.add.insert((p_ty.0.clone(), p_ty.1.clone()), ty_name);
     }
-    pub fn take(self) -> (HashSet<(String, TypeId)>, HashMap<(String, TypeId), &'static str>) {
+    pub fn take(
+        self,
+    ) -> (
+        HashSet<(String, TypeId)>,
+        HashMap<(String, TypeId), &'static str>,
+    ) {
         (self.sub, self.add)
     }
 }
@@ -143,7 +147,10 @@ impl State {
         mem::swap(&mut self.receivers, &mut rxs);
         exit
     }
-    pub fn binary(&mut self, plot: Option<(&mut PlotSink, f64)>) -> (bool, &HashSet<(String, TypeId)>) {
+    pub fn binary(
+        &mut self,
+        plot: Option<(&mut PlotSink, f64)>,
+    ) -> (bool, &HashSet<(String, TypeId)>) {
         let exit = self.try_rx();
         if let Some((plot, time)) = plot {
             for ((place, _ty), (len, ty_name)) in &self.state {

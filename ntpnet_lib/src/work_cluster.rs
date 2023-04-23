@@ -6,7 +6,11 @@ use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use plotmux::plotsink::PlotSink;
 
 use crate::transition::{Description, Transition};
-use crate::{net::Net, PlotOptions, Token, state::{State, StateBlockable, StateDelta}};
+use crate::{
+    net::Net,
+    state::{State, StateBlockable, StateDelta},
+    PlotOptions, Token,
+};
 
 use std::time::Instant;
 

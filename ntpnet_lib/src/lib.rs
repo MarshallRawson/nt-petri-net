@@ -37,15 +37,15 @@ impl Deref for Token {
     }
 }
 
-pub mod reactor;
+mod monitor;
 pub mod multi_reactor;
 pub mod net;
+pub mod reactor;
 mod state;
-mod work_cluster;
-mod monitor;
 pub mod transition;
 pub mod transition_input_tokens;
 pub mod transition_output_tokens;
+mod work_cluster;
 
 pub type TransitionMaker = Box<dyn FnOnce() -> Box<dyn transition::Transition> + Send>;
 
