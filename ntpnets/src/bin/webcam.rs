@@ -1,7 +1,7 @@
 use ntpnets::camera_reader::CameraReader;
 use ntpnets::image_consumer::ImageConsumer;
 
-use ntpnet_lib::{net::Net, reactor::reactor, Token};
+use ntpnet::{reactor, Net, Token};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 use clap::Parser;

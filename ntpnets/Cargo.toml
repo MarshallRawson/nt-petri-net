@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 
-ntpnet_lib = { path = "../ntpnet_lib" }
+ntpnet = { path = "../ntpnet" }
 ntpnet_macro = { path = "../ntpnet_macro" }
 plotmux = { path = "../plotmux" }
 

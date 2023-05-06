@@ -21,8 +21,8 @@ pub fn impl_transition_input_tokens_macro(ast: &syn::DeriveInput) -> TokenStream
     let field_descriptions = common::field_descriptions_hash_set(&ast);
 
     let gen = quote! {
-        impl ::ntpnet_lib::transition_input_tokens::TransitionInputTokens for #name {
-            fn from_map(map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet_lib::Token>)
+        impl ::ntpnet::TransitionInputTokens for #name {
+            fn from_map(map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet::Token>)
                 -> Self
             {
                 Self{

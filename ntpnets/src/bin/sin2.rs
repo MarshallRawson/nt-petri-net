@@ -1,5 +1,5 @@
 use clap::Parser;
-use ntpnet_lib::{multi_reactor::MultiReactor, net::Net, ReactorOptions, Token};
+use ntpnet::{MultiReactor, Net, ReactorOptions, Token};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 #[derive(Parser)]
@@ -9,17 +9,17 @@ struct Args {
 }
 
 mod sin_gen {
-    use ntpnet_lib::TransitionMaker;
+    use ntpnet::TransitionMaker;
     use plotmux::plotsink::PlotSink;
-    #[derive(ntpnet_macro::TransitionInputTokens)]
+    #[derive(ntpnet::TransitionInputTokensMacro)]
     struct TimeSpan {
         t: (f64, f64, usize),
     }
-    #[derive(ntpnet_macro::TransitionOutputTokens)]
+    #[derive(ntpnet::TransitionOutputTokensMacro)]
     struct F {
         f: Vec<f64>,
     }
-    #[derive(ntpnet_macro::Transition)]
+    #[derive(ntpnet::Transition)]
     #[ntpnet_transition(sin: Input(TimeSpan) -> Output(F))]
     pub struct SinGen {
         p: PlotSink,
@@ -44,18 +44,18 @@ mod sin_gen {
 }
 
 mod fft_real {
-    use ntpnet_lib::TransitionMaker;
+    use ntpnet::TransitionMaker;
     use plotmux::plotsink::PlotSink;
     use rustfft::{num_complex::Complex, FftPlanner};
-    #[derive(ntpnet_macro::TransitionInputTokens)]
+    #[derive(ntpnet::TransitionInputTokensMacro)]
     struct Time {
         s: Vec<f64>,
     }
-    #[derive(ntpnet_macro::TransitionOutputTokens)]
+    #[derive(ntpnet::TransitionOutputTokensMacro)]
     struct Freq {
         s: Vec<Complex<f64>>,
     }
-    #[derive(ntpnet_macro::Transition)]
+    #[derive(ntpnet::Transition)]
     #[ntpnet_transition(fft: Input(Time) -> Output(Freq))]
     pub struct FFTReal {
         p: PlotSink,

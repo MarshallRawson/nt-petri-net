@@ -1,5 +1,5 @@
 use clap::Parser;
-use ntpnet_lib::{multi_reactor::MultiReactor, net::Net, ReactorOptions, Token};
+use ntpnet::{MultiReactor, Net, ReactorOptions, Token};
 use ntpnets::plot_audio::PlotAudio;
 use ntpnets::sound_reader::SoundReader;
 use plotmux::plotmux::{ClientMode, PlotMux};

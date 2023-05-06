@@ -1,12 +1,12 @@
 mod sin {
-    use ntpnet_lib::TransitionMaker;
+    use ntpnet::TransitionMaker;
     use plotmux::plotsink::PlotSink;
     use std::{thread, time};
-    #[derive(ntpnet_macro::TransitionInputTokens, ntpnet_macro::TransitionOutputTokens)]
+    #[derive(ntpnet::TransitionInputTokensMacro, ntpnet::TransitionOutputTokensMacro)]
     struct Time {
         t: f64,
     }
-    #[derive(ntpnet_macro::Transition)]
+    #[derive(ntpnet::Transition)]
     #[ntpnet_transition(sin: Input(Time) -> Output(Time))]
     pub struct Sin {
         p: PlotSink,
@@ -28,7 +28,7 @@ mod sin {
     }
 }
 
-use ntpnet_lib::{net::Net, reactor::reactor, Token};
+use ntpnet::{reactor, Net, Token};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 fn main() {

@@ -1,9 +1,10 @@
 [package]
-name = "ntpnet_lib"
+name = "ntpnet"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+ntpnet_macro = { path="../ntpnet_macro" }
 
 plotmux = { path = "../plotmux" }
 

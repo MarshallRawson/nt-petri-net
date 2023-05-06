@@ -1,6 +1,9 @@
 #![feature(trait_upcasting)]
 #![allow(incomplete_features)]
 
+extern crate ntpnet_macro;
+pub use ntpnet_macro::{Transition, TransitionInputTokensMacro, TransitionOutputTokensMacro};
+
 use std::any::Any;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
@@ -38,13 +41,18 @@ impl Deref for Token {
 }
 
 mod monitor;
-pub mod multi_reactor;
-pub mod net;
-pub mod reactor;
+mod multi_reactor;
+pub use multi_reactor::MultiReactor;
+mod net;
+pub use net::Net;
+mod reactor;
+pub use reactor::reactor;
 mod state;
 pub mod transition;
-pub mod transition_input_tokens;
-pub mod transition_output_tokens;
+mod transition_input_tokens;
+pub use transition_input_tokens::TransitionInputTokens;
+mod transition_output_tokens;
+pub use transition_output_tokens::TransitionOutputTokens;
 mod work_cluster;
 
 pub type TransitionMaker = Box<dyn FnOnce() -> Box<dyn transition::Transition> + Send>;

@@ -1,19 +1,18 @@
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::time::Instant;
 
-use ntpnet_lib;
-use ntpnet_macro;
+use ntpnet;
 use plotmux::plotsink::PlotSink;
 
-#[derive(ntpnet_macro::TransitionInputTokens)]
+#[derive(ntpnet::TransitionInputTokensMacro)]
 struct Audio {
     audio: (Instant, Vec<i16>),
 }
-#[derive(ntpnet_macro::TransitionOutputTokens)]
+#[derive(ntpnet::TransitionOutputTokensMacro)]
 struct AudioEnable {
     audio_enable: (),
 }
-#[derive(ntpnet_macro::Transition)]
+#[derive(ntpnet::Transition)]
 #[ntpnet_transition(audio: AudioInput(Audio) -> AudioOutput(AudioEnable))]
 pub struct PlotAudio {
     p: PlotSink,
@@ -23,7 +22,7 @@ pub struct PlotAudio {
     fft_planner: FftPlanner<f64>,
 }
 impl PlotAudio {
-    pub fn maker(p: PlotSink) -> ntpnet_lib::TransitionMaker {
+    pub fn maker(p: PlotSink) -> ntpnet::TransitionMaker {
         Box::new(|| {
             Box::new(PlotAudio {
                 p: p,

@@ -10,7 +10,7 @@ pub fn impl_transition_output_tokens_macro(ast: &syn::DeriveInput) -> TokenStrea
             let field_str = field.to_string();
             quote!{
                 #acc
-                map.insert((#field_str.to_string(), ::std::any::TypeId::of::<#ty>()), ::ntpnet_lib::Token::new(self.#field));
+                map.insert((#field_str.to_string(), ::std::any::TypeId::of::<#ty>()), ::ntpnet::Token::new(self.#field));
             }
         }
     );
@@ -18,9 +18,9 @@ pub fn impl_transition_output_tokens_macro(ast: &syn::DeriveInput) -> TokenStrea
     let field_descriptions = common::field_descriptions_hash_set(&ast);
 
     let gen = quote! {
-        impl ::ntpnet_lib::transition_output_tokens::TransitionOutputTokens for #name {
+        impl ::ntpnet::TransitionOutputTokens for #name {
             fn into_map(self: Self,
-            map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet_lib::Token>)
+            map: &mut ::std::collections::HashMap<(String, ::std::any::TypeId), ::ntpnet::Token>)
             {
                 #pack
             }

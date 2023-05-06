@@ -1723,7 +1723,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ntpnet_lib"
+name = "ntpnet"
 version = "0.1.0"
 dependencies = [
  "bimap",
@@ -1731,6 +1731,7 @@ dependencies = [
  "crossbeam-channel",
  "defer",
  "itertools",
+ "ntpnet_macro",
  "plotmux",
  "tempfile",
 ]
@@ -1755,7 +1756,7 @@ dependencies = [
  "libpulse-binding",
  "libpulse-simple-binding",
  "libpulse-sys",
- "ntpnet_lib",
+ "ntpnet",
  "ntpnet_macro",
  "plotmux",
  "rscam",

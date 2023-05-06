@@ -1,20 +1,20 @@
 use fft2d::slice::{fft_2d, ifft_2d};
 use image::buffer::ConvertBuffer;
 use image::{GrayImage, RgbImage};
-use ntpnet_lib::TransitionMaker;
+use ntpnet::TransitionMaker;
 use plotmux::plotsink::{ImageCompression, PlotSink};
 use rustfft::num_complex::Complex;
 use std::time::Instant;
 
-#[derive(ntpnet_macro::TransitionOutputTokens)]
+#[derive(ntpnet::TransitionOutputTokensMacro)]
 struct Out {
     out: (),
 }
-#[derive(ntpnet_macro::TransitionInputTokens)]
+#[derive(ntpnet::TransitionInputTokensMacro)]
 struct Image {
     image: (Instant, RgbImage),
 }
-#[derive(ntpnet_macro::Transition)]
+#[derive(ntpnet::Transition)]
 #[ntpnet_transition(consume: Input(Image) -> Output(Out))]
 pub struct ImageConsumer {
     p: PlotSink,

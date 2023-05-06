@@ -4,21 +4,20 @@ use libpulse_simple_binding::Simple;
 use libpulse_sys::stream::pa_stream_direction_t as Direction;
 use std::time::{Duration, Instant};
 
-use ntpnet_lib;
-use ntpnet_macro;
+use ntpnet;
 use plotmux::plotsink::PlotSink;
 
-#[derive(ntpnet_macro::TransitionInputTokens)]
+#[derive(ntpnet::TransitionInputTokensMacro)]
 struct Enable {
     _e: (),
 }
 
-#[derive(ntpnet_macro::TransitionOutputTokens)]
+#[derive(ntpnet::TransitionOutputTokensMacro)]
 struct Samples {
     samples: (Instant, Vec<i16>),
 }
 
-#[derive(ntpnet_macro::Transition)]
+#[derive(ntpnet::Transition)]
 #[ntpnet_transition(f: Input(Enable) -> Output(Samples))]
 pub struct SoundReader {
     p: PlotSink,
@@ -30,7 +29,7 @@ pub struct SoundReader {
     latency: Duration,
 }
 impl SoundReader {
-    pub fn maker(mut plotsink: PlotSink) -> ntpnet_lib::TransitionMaker {
+    pub fn maker(mut plotsink: PlotSink) -> ntpnet::TransitionMaker {
         Box::new(move || {
             let spec = Spec {
                 format: Format::S16NE,

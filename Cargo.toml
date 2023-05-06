@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "ntpnet_lib",
+    "ntpnet",
     "ntpnet_macro",
     "ntpnets",
     "plotmux"

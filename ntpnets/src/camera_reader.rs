@@ -1,18 +1,18 @@
 use image::RgbImage;
-use ntpnet_lib::TransitionMaker;
+use ntpnet::TransitionMaker;
 use plotmux::plotsink::PlotSink;
 use rscam::{Camera, Config};
 use std::time::Instant;
 
-#[derive(ntpnet_macro::TransitionInputTokens)]
+#[derive(ntpnet::TransitionInputTokensMacro)]
 struct E {
     _enable: (),
 }
-#[derive(ntpnet_macro::TransitionOutputTokens)]
+#[derive(ntpnet::TransitionOutputTokensMacro)]
 struct Image {
     image: (Instant, RgbImage),
 }
-#[derive(ntpnet_macro::Transition)]
+#[derive(ntpnet::Transition)]
 #[ntpnet_transition(read: Input(E) -> Output(Image))]
 pub struct CameraReader {
     camera: Camera,
