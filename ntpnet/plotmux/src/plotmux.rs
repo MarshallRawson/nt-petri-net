@@ -164,12 +164,15 @@ fn make_client(png_path: Option<&PathBuf>, mode: ClientMode) -> TcpStream {
                     .as_path()
                     .parent()
                     .unwrap()
+                    .parent()
+                    .unwrap()
                     .join(Path::new("plotmuxui")),
             );
             if let Some(png_path) = png_path {
                 let png_path = &png_path.as_os_str().to_str().unwrap().to_string();
                 cmd.arg("--graph-png").arg(format!("{}", png_path));
             }
+            println!("{:?}", cmd);
             cmd.arg("--addr")
                 .arg(format!("localhost:{}", port))
                 .spawn()

@@ -1,5 +1,4 @@
 mod sin {
-    use ntpnet::TransitionMaker;
     use plotmux::plotsink::PlotSink;
     use std::{thread, time};
     #[derive(ntpnet::TransitionInputTokensMacro, ntpnet::TransitionOutputTokensMacro)]
@@ -12,7 +11,7 @@ mod sin {
         p: PlotSink,
     }
     impl Sin {
-        pub fn maker(plotsink: PlotSink) -> TransitionMaker {
+        pub fn maker(plotsink: PlotSink) -> ntpnet::TransitionMaker {
             Box::new(move || Box::new(Sin { p: plotsink }))
         }
         fn sin(&mut self, f: Input) -> Output {

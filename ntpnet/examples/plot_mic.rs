@@ -1,7 +1,7 @@
 use clap::Parser;
 use ntpnet::{MultiReactor, Net, ReactorOptions, Token};
-use ntpnets::plot_audio::PlotAudio;
-use ntpnets::sound_reader::SoundReader;
+use utilities::plot_audio::PlotAudio;
+use utilities::sound_reader::SoundReader;
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 #[derive(Parser)]

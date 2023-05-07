@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ntpnet_macro = { path="../ntpnet_macro" }
+ntpnet_macro = { path="ntpnet_macro" }
 
-plotmux = { path = "../plotmux" }
+plotmux = { path = "plotmux" }
 
 clap = { version = "4.0.7", features = ["derive"] }
 crossbeam-channel = "0.5.5"
@@ -14,3 +14,17 @@ itertools = "0.10.3"
 tempfile = "3.3.0"
 bimap = "0.6.2"
 defer = "0.1.0"
+
+[dev-dependencies]
+utilities = { path = "utilities" }
+
+rscam = "0.5.5"
+image = "0.24.2"
+fft2d = "0.1.0"
+rustfft = "6.1.0"
+
+libpulse-simple-binding = "2.25.0"
+libpulse-sys = "1.19.3"
+libpulse-binding = "2.26.0"
+
+byteorder = "1.4.3"

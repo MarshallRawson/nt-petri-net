@@ -1,0 +1,21 @@
+[package]
+name = "utilities"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+ntpnet = { path = "../../ntpnet" }
+plotmux = { path = "../plotmux" }
+
+rscam = "0.5.5"
+image = "0.24.2"
+clap = { version = "4.0.7", features = ["derive"] }
+fft2d = "0.1.0"
+rustfft = "6.1.0"
+
+libpulse-simple-binding = "2.25.0"
+libpulse-sys = "1.19.3"
+libpulse-binding = "2.26.0"
+
+byteorder = "1.4.3"

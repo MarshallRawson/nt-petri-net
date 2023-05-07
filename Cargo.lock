@@ -1022,9 +1022,9 @@ dependencies = [
 
 [[package]]
 name = "fft2d"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cff68a3c40e36f8377f7b3b5ba9925a24d1d769cc690f5d344a28e798057a52"
+checksum = "1c482b46ec33684e85d0efe087784fbcea8f66287d2f9f27d6e27fe6433aeb40"
 dependencies = [
  "rustfft",
 ]
@@ -1727,13 +1727,22 @@ name = "ntpnet"
 version = "0.1.0"
 dependencies = [
  "bimap",
+ "byteorder",
  "clap",
  "crossbeam-channel",
  "defer",
+ "fft2d",
+ "image",
  "itertools",
+ "libpulse-binding",
+ "libpulse-simple-binding",
+ "libpulse-sys",
  "ntpnet_macro",
  "plotmux",
+ "rscam",
+ "rustfft",
  "tempfile",
+ "utilities",
 ]
 
 [[package]]
@@ -1743,24 +1752,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "ntpnets"
-version = "0.1.0"
-dependencies = [
- "byteorder",
- "clap",
- "fft2d",
- "image",
- "libpulse-binding",
- "libpulse-simple-binding",
- "libpulse-sys",
- "ntpnet",
- "ntpnet_macro",
- "plotmux",
- "rscam",
- "rustfft",
 ]
 
 [[package]]
@@ -2691,6 +2682,23 @@ name = "utf8parse"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
+
+[[package]]
+name = "utilities"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "clap",
+ "fft2d",
+ "image",
+ "libpulse-binding",
+ "libpulse-simple-binding",
+ "libpulse-sys",
+ "ntpnet",
+ "plotmux",
+ "rscam",
+ "rustfft",
+]
 
 [[package]]
 name = "vec_map"

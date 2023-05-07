@@ -2,9 +2,6 @@
 
 members = [
     "ntpnet",
-    "ntpnet_macro",
-    "ntpnets",
-    "plotmux"
 ]
 
 [profile.dev]
