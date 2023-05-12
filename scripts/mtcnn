@@ -1,5 +1,4 @@
-#!/usr/bin/bash
-
+#!/bin/bash
 
 mkdir -p target/data
 cd target/data

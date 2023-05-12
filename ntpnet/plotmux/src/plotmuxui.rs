@@ -103,8 +103,7 @@ impl PlotMuxUi {
                 egui::ColorImage::from_rgba_unmultiplied(
                     [graph_image2.width() as _, graph_image2.height() as _],
                     graph_image2.as_raw(),
-                ),
-            ))
+            )))
         } else {
             None
         };
@@ -168,8 +167,11 @@ impl eframe::App for PlotMuxUi {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.checkbox(&mut self.show_graph, rich_text("Graph"));
             if self.show_graph {
-                if let Some(graph_image) = &self.graph_image {
-                    graph_image.show(ui);
+                if let Some(graph_image) = &mut self.graph_image {
+                    egui::ScrollArea::both()
+                        .show(ui, |ui| {
+                            graph_image.show(ui);
+                        });
                 }
             } else {
                 ui.horizontal(|ui| {
