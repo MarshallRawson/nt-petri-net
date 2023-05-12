@@ -1,6 +1,6 @@
 use image::RgbImage;
 use ntpnet::TransitionMaker;
-use plotmux::plotsink::PlotSink;
+use plotmux::plotsink::{PlotSink, ImageCompression};
 use rscam::{Camera, Config};
 use std::time::Instant;
 
@@ -16,7 +16,8 @@ struct Image {
 #[ntpnet_transition(read: Input(E) -> Output(Image))]
 pub struct CameraReader {
     camera: Camera,
-    _p: PlotSink,
+    p: PlotSink,
+    dev: String,
 }
 impl CameraReader {
     pub fn maker(fps: u32, dev: String, mut plotsink: PlotSink) -> TransitionMaker {
@@ -49,7 +50,8 @@ impl CameraReader {
             cam.start(&config).unwrap();
             Box::new(Self {
                 camera: cam,
-                _p: plotsink,
+                p: plotsink,
+                dev: dev,
             })
         })
     }
@@ -58,6 +60,7 @@ impl CameraReader {
         let now = Instant::now();
         let rgb_frame =
             RgbImage::from_raw(frame.resolution.0, frame.resolution.1, frame.to_vec()).unwrap();
+        self.p.plot_image(&self.dev, rgb_frame.clone(), ImageCompression::Lossless);
         Output::Image(Image {
             image: (now, rgb_frame),
         })
