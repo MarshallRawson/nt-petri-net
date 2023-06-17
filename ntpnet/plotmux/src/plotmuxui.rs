@@ -10,7 +10,9 @@ use eframe::egui::Color32;
 use egui_extras::image::RetainedImage;
 use image::buffer::ConvertBuffer;
 use image::io::Reader as ImageReader;
+use image::imageops;
 use image::DynamicImage::{ImageRgb8, ImageRgba8};
+use image::DynamicImage;
 use image::RgbaImage;
 use std::io::Read;
 use std::net::TcpStream;
@@ -80,7 +82,7 @@ pub struct PlotMuxUi {
     addr: String,
     receiver: Option<Receiver<(usize, PlotableData)>>,
     source_search: String,
-    graph_image: Option<RetainedImage>,
+    graph_image: Option<(RetainedImage, RgbaImage, u32, u32)>,
     show_graph: bool,
     selected_source: Option<usize>,
     mode: Option<PlotMode>,
@@ -98,12 +100,14 @@ impl PlotMuxUi {
                 ImageRgb8(image) => image.convert(),
                 _ => panic!(),
             };
-            Some(RetainedImage::from_color_image(
+            let w = graph_image2.width();
+            let h = graph_image2.height();
+            Some((RetainedImage::from_color_image(
                 "graph image",
                 egui::ColorImage::from_rgba_unmultiplied(
                     [graph_image2.width() as _, graph_image2.height() as _],
                     graph_image2.as_raw(),
-            )))
+            )), graph_image2, w, h))
         } else {
             None
         };
@@ -154,56 +158,87 @@ impl eframe::App for PlotMuxUi {
                 _ => self.sources[idx].as_mut().unwrap().new_data(new_data),
             }
         }
-        ctx.input(|i| {
-            if i.modifiers.shift {
-                self.font_size += (i.zoom_delta() - 1.0) * 2.0;
-            }
-        });
+        let zoom_delta = {
+            let mut zoom_delta = 0.0;
+            ctx.input(|i| {
+                if i.modifiers.shift {
+                    self.font_size += (i.zoom_delta() - 1.0) * 2.0;
+                }
+                if i.modifiers.ctrl {
+                    zoom_delta = (i.zoom_delta() - 1.0) * 2.0;
+                    zoom_delta *= 100.;
+                }
+            });
+            zoom_delta
+        };
         self.font_size = self.font_size.clamp(5.0, 100.0);
         let rich_text = {
             let font = self.font_size;
             move |string: &str| RichText::new(string).size(font)
         };
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::SidePanel::left(egui::Id::new("left_panel")).show(ctx, |ui| {
             ui.checkbox(&mut self.show_graph, rich_text("Graph"));
-            if self.show_graph {
-                if let Some(graph_image) = &mut self.graph_image {
-                    egui::ScrollArea::both()
-                        .show(ui, |ui| {
-                            graph_image.show(ui);
-                        });
-                }
-            } else {
+            ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.label(rich_text("Source: "));
                     ui.text_edit_singleline(&mut self.source_search);
-                    let possible_source_names = self
-                        .sources
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(i, source)| {
-                            if let Some(source) = source {
-                                if source.name.starts_with(&self.source_search) {
-                                    Some((i, source.name.clone()))
-                                } else {
-                                    None
-                                }
+                });
+                let possible_source_names = self
+                    .sources
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, source)| {
+                        if let Some(source) = source {
+                            if source.name.starts_with(&self.source_search) {
+                                Some((i, source.name.clone()))
                             } else {
                                 None
                             }
-                        })
-                        .collect::<Vec<(usize, String)>>();
-                    let buttons = possible_source_names
-                        .iter()
-                        .map(|(i, s)| (*i, ui.button(rich_text(s)).clicked()))
-                        .collect::<Vec<(usize, bool)>>();
-                    for (i, clicked) in buttons.iter() {
-                        if *clicked {
-                            self.selected_source = Some(*i);
-                            break;
+                        } else {
+                            None
                         }
+                    })
+                    .collect::<Vec<(usize, String)>>();
+                let buttons = possible_source_names
+                    .iter()
+                    .map(|(i, s)| (*i, ui.button(rich_text(s)).clicked()))
+                    .collect::<Vec<(usize, bool)>>();
+                for (i, clicked) in buttons.iter() {
+                    if *clicked {
+                        self.selected_source = Some(*i);
+                        break;
                     }
-                });
+                }
+            });
+        });
+        egui::CentralPanel::default().show(ctx, |ui| {
+            if self.show_graph {
+                if zoom_delta != 0.0 {
+                    if self.graph_image.is_some() {
+                        let (_, graph_image, w, h) = self.graph_image.take().unwrap();
+                        let w = (w as f32 + zoom_delta) as u32;
+                        let h = (h as f32 + zoom_delta) as u32;
+                        //println!("zoom_delta: {}", zoom_delta);
+                        //println!("w, h: {}, {}", w, h);
+                        let graph_image2 = imageops::resize(
+                            &DynamicImage::ImageRgba8(graph_image.clone()), w, h, imageops::FilterType::Triangle
+                        );
+                        self.graph_image = Some((RetainedImage::from_color_image(
+                            "graph image",
+                            egui::ColorImage::from_rgba_unmultiplied(
+                                [graph_image2.width() as _, graph_image2.height() as _],
+                                graph_image2.as_raw(),
+                        )), graph_image, w, h))
+                    }
+
+                }
+                if let Some(graph_image) = &mut self.graph_image {
+                    egui::ScrollArea::both()
+                        .show(ui, |ui| {
+                            graph_image.0.show(ui);
+                        });
+                }
+            } else {
                 if let Some(source_idx) = self.selected_source {
                     ui.heading(rich_text(&self.sources[source_idx].as_ref().unwrap().name));
                     let mut text = None;
