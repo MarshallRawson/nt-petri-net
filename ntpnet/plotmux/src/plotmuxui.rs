@@ -88,7 +88,7 @@ pub struct PlotMuxUi {
     mode: Option<PlotMode>,
     series_2d_history: f64,
     font_size: f32,
-    plot_ratios: f32,
+    plot_height: f32,
 }
 impl PlotMuxUi {
     pub fn make(graph_png_path: Option<&String>, addr: String) -> Self {
@@ -122,7 +122,7 @@ impl PlotMuxUi {
             mode: None,
             series_2d_history: 0.0,
             font_size: 15.0,
-            plot_ratios: 4.0,
+            plot_height: 200.,
         }
     }
     pub fn spin(mut self) {
@@ -163,8 +163,7 @@ impl eframe::App for PlotMuxUi {
             ctx.input(|i| {
                 if i.modifiers.shift {
                     self.font_size += (i.zoom_delta() - 1.0) * 2.0;
-                }
-                if i.modifiers.ctrl {
+                } else if i.modifiers.ctrl {
                     zoom_delta = (i.zoom_delta() - 1.0) * 2.0;
                     zoom_delta *= 100.;
                 }
@@ -199,13 +198,36 @@ impl eframe::App for PlotMuxUi {
                         }
                     })
                     .collect::<Vec<(usize, String)>>();
-                let buttons = possible_source_names
-                    .iter()
-                    .map(|(i, s)| (*i, ui.button(rich_text(s)).clicked()))
-                    .collect::<Vec<(usize, bool)>>();
-                for (i, clicked) in buttons.iter() {
-                    if *clicked {
-                        self.selected_source = Some(*i);
+                let buttons = {
+                    let mut buttons = vec![];
+                    for (i, s) in possible_source_names {
+                        ui.horizontal(|ui| {
+                            ui.label(rich_text(&s));
+                            let text = ui.button("text");
+                            let series_2d = ui.button("series2d");
+                            let image = ui.button("image");
+                            buttons.push((
+                                i,
+                                text,
+                                series_2d,
+                                image,
+                            ));
+                        });
+                    }
+                    buttons
+                };
+                for (i, text, series_2d, image) in buttons {
+                    if text.clicked() {
+                        self.mode = Some(PlotMode::Text());
+                        self.selected_source = Some(i);
+                        break;
+                    } else if series_2d.clicked() {
+                        self.mode = Some(PlotMode::Series2d());
+                        self.selected_source = Some(i);
+                        break;
+                    } else if image.clicked() {
+                        self.mode = Some(PlotMode::Image());
+                        self.selected_source = Some(i);
                         break;
                     }
                 }
@@ -218,8 +240,6 @@ impl eframe::App for PlotMuxUi {
                         let (_, graph_image, w, h) = self.graph_image.take().unwrap();
                         let w = (w as f32 + zoom_delta) as u32;
                         let h = (h as f32 + zoom_delta) as u32;
-                        //println!("zoom_delta: {}", zoom_delta);
-                        //println!("w, h: {}, {}", w, h);
                         let graph_image2 = imageops::resize(
                             &DynamicImage::ImageRgba8(graph_image.clone()), w, h, imageops::FilterType::Triangle
                         );
@@ -241,21 +261,6 @@ impl eframe::App for PlotMuxUi {
             } else {
                 if let Some(source_idx) = self.selected_source {
                     ui.heading(rich_text(&self.sources[source_idx].as_ref().unwrap().name));
-                    let mut text = None;
-                    let mut series_2d = None;
-                    let mut image = None;
-                    ui.horizontal(|ui| {
-                        text = Some(ui.button(rich_text("text")));
-                        series_2d = Some(ui.button(rich_text("series_2d")));
-                        image = Some(ui.button(rich_text("image")));
-                    });
-                    if text.unwrap().clicked() {
-                        self.mode = Some(PlotMode::Text());
-                    } else if series_2d.unwrap().clicked() {
-                        self.mode = Some(PlotMode::Series2d());
-                    } else if image.unwrap().clicked() {
-                        self.mode = Some(PlotMode::Image());
-                    }
                     match &self.mode {
                         Some(m) => match m {
                             PlotMode::Text() => {
@@ -281,8 +286,8 @@ impl eframe::App for PlotMuxUi {
                                         egui::DragValue::new(&mut self.series_2d_history)
                                             .speed(1.0),
                                     );
-                                    ui.label(rich_text("Plot ratios:"));
-                                    ui.add(egui::Slider::new(&mut self.plot_ratios, 0.1..=10.));
+                                    ui.label(rich_text("Plot heights:"));
+                                    ui.add(egui::Slider::new(&mut self.plot_height, 10.0..=1000.));
                                 });
                                 egui::ScrollArea::vertical().show(ui, |ui| {
                                     for (plot_name, plot) in
@@ -290,7 +295,7 @@ impl eframe::App for PlotMuxUi {
                                     {
                                         ui.label(rich_text(plot_name));
                                         plot::Plot::new(plot_name)
-                                            .view_aspect(self.plot_ratios)
+                                            .height(self.plot_height)
                                             .legend(plot::Legend::default())
                                             .show(ui, |plot_ui| {
                                                 for (name, (color, vec)) in plot {
