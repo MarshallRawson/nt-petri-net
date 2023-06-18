@@ -11,6 +11,7 @@ use crate::facial_detection::FaceBBox;
 #[derive(ntpnet::TransitionInputTokensMacro)]
 struct Faces {
     faces: (Instant, RgbImage, Vec<FaceBBox>),
+    _enable: (),
 }
 
 #[derive(ntpnet::TransitionOutputTokensMacro)]
@@ -37,7 +38,7 @@ impl MouthMoving {
         })
     }
     fn f(&mut self, i: Input) -> Output {
-        let (t, faces, bboxes) = match i { Input::Faces(Faces { faces }) => faces };
+        let (t, faces, bboxes) = match i { Input::Faces(Faces { faces, .. }) => faces };
         let mut moving = vec![];
         for bbox in &bboxes {
             let mouth_center = (

@@ -58,6 +58,7 @@ fn main() {
         .transition_to_place("mouth_moving", "done", "face_detection_enable")
         .transition_to_place("mouth_moving", "moving", "MouthMoving")
         .place_to_transition("mouth_moving_enable", "_enable", "mouth_moving")
+        .set_start_tokens("mouth_moving_enable", vec![Token::new(())])
         .set_start_tokens("sound_reader_enable", vec![Token::new(())])
         .place_to_transition("sound_reader_enable", "_e", "sound_reader")
         .add_transition(
