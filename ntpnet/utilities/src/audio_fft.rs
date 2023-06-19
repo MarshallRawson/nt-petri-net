@@ -38,7 +38,8 @@ impl AudioFFT {
     fn audio(&mut self, i: AudioInput) -> AudioOutput {
         let (t, samples) = match i {
             AudioInput::Audio(Audio {
-                audio: (t, samples), ..
+                audio: (t, samples),
+                ..
             }) => (t, samples),
         };
         //self.p.println(&format!("samples.len() {}", samples.len()));
@@ -59,23 +60,18 @@ impl AudioFFT {
             })
             .collect::<Vec<_>>();
         fft.process(&mut samples_complex);
-        let fft_norm : Vec<_> = samples_complex[0..samples.len() / 2]
-                .iter()
-                .enumerate()
-                .map(|(x, y)| {
-                    (
-                        x as f64 / samples.len() as f64 * self.fs as f64,
-                        y.norm(),
-                    )
-                })
-                .collect();
-        let fft_norm_log10 : Vec<_> = fft_norm.iter().map(|(x, y)| (*x, f64::log10(*y))).collect();
-        self.p.plot_line_2d(
-            "frequency",
-            "log(norm(fft(samples)))",
-            fft_norm_log10,
-        );
+        let fft_norm: Vec<_> = samples_complex[0..samples.len() / 2]
+            .iter()
+            .enumerate()
+            .map(|(x, y)| (x as f64 / samples.len() as f64 * self.fs as f64, y.norm()))
+            .collect();
+        let fft_norm_log10: Vec<_> = fft_norm.iter().map(|(x, y)| (*x, f64::log10(*y))).collect();
+        self.p
+            .plot_line_2d("frequency", "log(norm(fft(samples)))", fft_norm_log10);
         self.tl = Some(t);
-        AudioOutput::FFT(FFT { fft: (t, samples, fft_norm), done: () })
+        AudioOutput::FFT(FFT {
+            fft: (t, samples, fft_norm),
+            done: (),
+        })
     }
 }

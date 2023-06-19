@@ -1,14 +1,10 @@
 use utilities::{
-    camera_reader::CameraReader,
-    facial_detection::FacialDetection,
-    mouth_moving::MouthMoving,
-    sound_reader::SoundReader,
-    audio_fft::AudioFFT,
-    audio_mouth_moving::AudioMouthMoving
+    audio_fft::AudioFFT, audio_mouth_moving::AudioMouthMoving, camera_reader::CameraReader,
+    facial_detection::FacialDetection, mouth_moving::MouthMoving, sound_reader::SoundReader,
 };
 
-use ntpnet::{Net, MultiReactor, Token, ReactorOptions};
-use plotmux::plotmux::{PlotMux, ClientMode};
+use ntpnet::{MultiReactor, Net, ReactorOptions, Token};
+use plotmux::plotmux::{ClientMode, PlotMux};
 use std::collections::HashSet;
 
 use clap::Parser;
@@ -33,11 +29,7 @@ fn main() {
         .set_start_tokens("camera_enable", vec![Token::new(())])
         .add_transition(
             "camera_reader",
-            CameraReader::maker(
-                args.fps,
-                args.dev,
-                plotmux.add_plot_sink("camera_reader"),
-            ),
+            CameraReader::maker(args.fps, args.dev, plotmux.add_plot_sink("camera_reader")),
         )
         .add_transition(
             "face_detection",
@@ -82,9 +74,13 @@ fn main() {
         .place_to_transition("FFT", "audio", "audio_mouth_moving")
         .place_to_transition("MouthMoving", "mouth_moving", "audio_mouth_moving")
         .transition_to_place("audio_mouth_moving", "audio_done", "fft_enable")
-        .transition_to_place("audio_mouth_moving", "mouth_moving_done", "mouth_moving_enable")
-    ;
-    let r =MultiReactor::make(n,
+        .transition_to_place(
+            "audio_mouth_moving",
+            "mouth_moving_done",
+            "mouth_moving_enable",
+        );
+    let r = MultiReactor::make(
+        n,
         vec![
             HashSet::from(["camera_reader".into()]),
             HashSet::from(["face_detection".into()]),
@@ -93,7 +89,7 @@ fn main() {
             HashSet::from(["audio_fft".into()]),
             HashSet::from(["audio_mouth_moving".into()]),
         ],
-        &mut plotmux
+        &mut plotmux,
     );
     println!("{:?}", r.png());
     let plotmux_mode = if let Some(addr) = args.remote_plotmux {

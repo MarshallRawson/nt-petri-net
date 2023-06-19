@@ -1,14 +1,14 @@
-use tensorflow::{Tensor, Session, SessionOptions, Graph, ImportGraphDefOptions, SessionRunArgs};
-use image::{RgbImage, Rgb};
+use image::{Rgb, RgbImage};
+use itertools::izip;
 use std::env;
-use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 use std::time::Instant;
-use itertools::izip;
+use tensorflow::{Graph, ImportGraphDefOptions, Session, SessionOptions, SessionRunArgs, Tensor};
 
 use ntpnet;
-use plotmux::plotsink::{PlotSink, ImageCompression};
+use plotmux::plotsink::{ImageCompression, PlotSink};
 
 #[derive(ntpnet::TransitionInputTokensMacro)]
 struct Image {
@@ -38,10 +38,10 @@ impl Landmarks {
 fn draw_point((x, y): &(f32, f32), image: &mut image::RgbImage) {
     let x = f32::max(5., *x) as u32;
     let y = f32::max(5., *y) as u32;
-    for i in x - 5  .. x + 5 {
-        for j in y - 5 .. y + 5 {
-            let i = (i as u32).clamp(0, image.width()-1);
-            let j = (j as u32).clamp(0, image.height()-1);
+    for i in x - 5..x + 5 {
+        for j in y - 5..y + 5 {
+            let i = (i as u32).clamp(0, image.width() - 1);
+            let j = (j as u32).clamp(0, image.height() - 1);
             image.put_pixel(i, j, image::Rgb([0, 255, 0]));
         }
     }
@@ -78,7 +78,16 @@ impl FacialDetection {
     pub fn maker(mut plotsink: PlotSink) -> ntpnet::TransitionMaker {
         Box::new(|| {
             let model = {
-                let path = env::current_exe().unwrap().as_path().parent().unwrap().parent().unwrap().parent().unwrap().join(Path::new("data/mtcnn.pb"));
+                let path = env::current_exe()
+                    .unwrap()
+                    .as_path()
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .parent()
+                    .unwrap()
+                    .join(Path::new("data/mtcnn.pb"));
                 plotsink.println2("model", &format!("{:?}", path));
                 let mut f = File::open(path).expect("failed to open file");
                 let mut buffer = vec![];
@@ -86,37 +95,69 @@ impl FacialDetection {
                 buffer
             };
             let mut g = Graph::new();
-            g.import_graph_def(&model, &ImportGraphDefOptions::new()).unwrap();
+            g.import_graph_def(&model, &ImportGraphDefOptions::new())
+                .unwrap();
 
             Box::new(Self {
                 p: plotsink,
                 session: Session::new(&SessionOptions::new(), &g).unwrap(),
                 graph: g,
                 min_size: Tensor::new(&[]).with_values(&[40f32]).unwrap(),
-                thresholds: Tensor::new(&[3]).with_values(&[0.6f32, 0.7f32, 0.7f32]).unwrap(),
+                thresholds: Tensor::new(&[3])
+                    .with_values(&[0.6f32, 0.7f32, 0.7f32])
+                    .unwrap(),
                 factor: Tensor::new(&[]).with_values(&[0.709f32]).unwrap(),
                 _t0: std::time::Instant::now(),
             })
         })
     }
     fn f(&mut self, i: Input) -> Output {
-        let (t, image) = match i { Input::Image(Image { image, .. }) => image };
-        let image_f_bgr = image.pixels().flat_map(|rgb| [rgb[2] as f32, rgb[1] as f32, rgb[0] as f32]).collect::<Vec<f32>>();
-        let input = Tensor::new(&[image.height() as u64, image.width() as u64, 3]).with_values(&image_f_bgr).unwrap();
+        let (t, image) = match i {
+            Input::Image(Image { image, .. }) => image,
+        };
+        let image_f_bgr = image
+            .pixels()
+            .flat_map(|rgb| [rgb[2] as f32, rgb[1] as f32, rgb[0] as f32])
+            .collect::<Vec<f32>>();
+        let input = Tensor::new(&[image.height() as u64, image.width() as u64, 3])
+            .with_values(&image_f_bgr)
+            .unwrap();
         let mut run_args = SessionRunArgs::new();
-        run_args.add_feed(&self.graph.operation_by_name_required("min_size").unwrap(), 0, &self.min_size);
-        run_args.add_feed(&self.graph.operation_by_name_required("thresholds").unwrap(), 0, &self.thresholds);
-        run_args.add_feed(&self.graph.operation_by_name_required("factor").unwrap(), 0, &self.factor);
-        run_args.add_feed(&self.graph.operation_by_name_required("input").unwrap(), 0, &input);
-        let bbox = run_args.request_fetch(&self.graph.operation_by_name_required("box").unwrap(), 0);
-        let prob = run_args.request_fetch(&self.graph.operation_by_name_required("prob").unwrap(), 0);
-        let landmarks = run_args.request_fetch(&self.graph.operation_by_name_required("landmarks").unwrap(), 0);
+        run_args.add_feed(
+            &self.graph.operation_by_name_required("min_size").unwrap(),
+            0,
+            &self.min_size,
+        );
+        run_args.add_feed(
+            &self.graph.operation_by_name_required("thresholds").unwrap(),
+            0,
+            &self.thresholds,
+        );
+        run_args.add_feed(
+            &self.graph.operation_by_name_required("factor").unwrap(),
+            0,
+            &self.factor,
+        );
+        run_args.add_feed(
+            &self.graph.operation_by_name_required("input").unwrap(),
+            0,
+            &input,
+        );
+        let bbox =
+            run_args.request_fetch(&self.graph.operation_by_name_required("box").unwrap(), 0);
+        let prob =
+            run_args.request_fetch(&self.graph.operation_by_name_required("prob").unwrap(), 0);
+        let landmarks = run_args.request_fetch(
+            &self.graph.operation_by_name_required("landmarks").unwrap(),
+            0,
+        );
         self.session.run(&mut run_args).unwrap();
         let bboxes = izip!(
             run_args.fetch(bbox).unwrap().chunks_exact(4),
             run_args.fetch(prob).iter(),
             run_args.fetch::<f32>(landmarks).unwrap().chunks_exact(10),
-        ).map(|(bbox, prob, landmarks)| {
+        )
+        .map(|(bbox, prob, landmarks)| {
             assert!(prob.len() >= 1);
             FaceBBox {
                 y1: bbox[0],
@@ -126,13 +167,15 @@ impl FacialDetection {
                 prob: prob[0],
                 landmarks: Landmarks::make(landmarks),
             }
-        }).collect::<Vec<_>>();
-        let mut faces = RgbImage::from_pixel(image.width(), image.height(), Rgb::<u8>::from([0, 0, 0]));
+        })
+        .collect::<Vec<_>>();
+        let mut faces =
+            RgbImage::from_pixel(image.width(), image.height(), Rgb::<u8>::from([0, 0, 0]));
         for bbox in &bboxes {
-            for i in bbox.x1 as u32 .. bbox.x2 as u32 {
-                for j in bbox.y1 as u32 .. bbox.y2 as u32 {
-                    let i = i.clamp(0, image.width()-1);
-                    let j = j.clamp(0, image.height()-1);
+            for i in bbox.x1 as u32..bbox.x2 as u32 {
+                for j in bbox.y1 as u32..bbox.y2 as u32 {
+                    let i = i.clamp(0, image.width() - 1);
+                    let j = j.clamp(0, image.height() - 1);
                     faces.put_pixel(i, j, *image.get_pixel(i, j));
                 }
             }
@@ -166,7 +209,11 @@ impl FacialDetection {
             //self.p.plot_series_2d("0", "distance", (t - self.t0).as_secs_f64(), bright);
             //self.p.plot_image("0", DynamicImage::ImageLuma8(mouth).into_rgb8(), ImageCompression::Lossless);
         }
-        self.p.plot_image("faces", faces.clone(), ImageCompression::Lossless);
-        Output::Faces(Faces{faces: (t, faces, bboxes), done: ()})
+        self.p
+            .plot_image("faces", faces.clone(), ImageCompression::Lossless);
+        Output::Faces(Faces {
+            faces: (t, faces, bboxes),
+            done: (),
+        })
     }
 }

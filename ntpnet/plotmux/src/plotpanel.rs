@@ -33,10 +33,11 @@ impl PlotPanel {
             plot_height: 200.0,
             show_graph: false,
             source_search: "".into(),
-            source: None
+            source: None,
         }
     }
-    pub fn show(&mut self,
+    pub fn show(
+        &mut self,
         ui: &mut egui::Ui,
         panel: Panel,
         rich_text: &dyn Fn(&str) -> egui::RichText,
@@ -45,7 +46,8 @@ impl PlotPanel {
         plot_source: &dyn Fn(&mut egui::Ui, usize, &PlotMode, &mut f64, &mut f32) -> bool,
     ) {
         let f = |ui: &mut egui::Ui| {
-            tile(ui,
+            tile(
+                ui,
                 &|n: String| Panel::Horizontal(egui::panel::SidePanel::left(n).resizable(true)),
                 self.name.clone(),
                 Child::Left,
@@ -55,7 +57,8 @@ impl PlotPanel {
                 plot_graph,
                 plot_source,
             );
-            tile(ui,
+            tile(
+                ui,
                 &|n: String| Panel::Horizontal(egui::panel::SidePanel::right(n).resizable(true)),
                 self.name.clone(),
                 Child::Right,
@@ -65,7 +68,8 @@ impl PlotPanel {
                 plot_graph,
                 plot_source,
             );
-            tile(ui,
+            tile(
+                ui,
                 &|n: String| Panel::Vertical(egui::panel::TopBottomPanel::top(n).resizable(true)),
                 self.name.clone(),
                 Child::Up,
@@ -91,8 +95,11 @@ impl PlotPanel {
                     }
                 }
             });
-            tile(ui,
-                &|n: String| Panel::Vertical(egui::panel::TopBottomPanel::bottom(n).resizable(true)),
+            tile(
+                ui,
+                &|n: String| {
+                    Panel::Vertical(egui::panel::TopBottomPanel::bottom(n).resizable(true))
+                },
                 self.name.clone(),
                 Child::Down,
                 &mut self.children,
@@ -108,7 +115,13 @@ impl PlotPanel {
                 plot_graph(ui);
             } else {
                 let exit_source = if let Some((mode, source_idx)) = &self.source {
-                    !plot_source(ui, *source_idx, mode, &mut self.series_2d_history, &mut self.plot_height)
+                    !plot_source(
+                        ui,
+                        *source_idx,
+                        mode,
+                        &mut self.series_2d_history,
+                        &mut self.plot_height,
+                    )
                 } else {
                     false
                 };
@@ -120,10 +133,10 @@ impl PlotPanel {
         match panel {
             Panel::Horizontal(panel) => {
                 panel.show_inside(ui, f);
-            },
+            }
             Panel::Vertical(panel) => {
                 panel.show_inside(ui, f);
-            },
+            }
         }
     }
 }
@@ -139,14 +152,15 @@ fn tile(
     plot_graph: &dyn Fn(&mut egui::Ui),
     plot_source: &dyn Fn(&mut egui::Ui, usize, &PlotMode, &mut f64, &mut f32) -> bool,
 ) {
-            let (n, c) = &mut children[idx as usize];
-            if c.is_some() {
-                c.as_mut().unwrap().show(ui,
-                    s(name+n),
-                    rich_text,
-                    source_search,
-                    plot_graph,
-                    plot_source,
-                );
-            }
+    let (n, c) = &mut children[idx as usize];
+    if c.is_some() {
+        c.as_mut().unwrap().show(
+            ui,
+            s(name + n),
+            rich_text,
+            source_search,
+            plot_graph,
+            plot_source,
+        );
+    }
 }

@@ -1,9 +1,9 @@
 use std::time::Instant;
 
-use image::{GrayImage, DynamicImage, Luma};
+use image::{DynamicImage, GrayImage, Luma};
 
 use ntpnet;
-use plotmux::plotsink::{PlotSink, ImageCompression};
+use plotmux::plotsink::{ImageCompression, PlotSink};
 
 use std::collections::VecDeque;
 
@@ -19,7 +19,7 @@ struct MouthMoving {
 struct AudioEnable {
     audio_done: (),
 }
-const AUDIO_RET: AudioOutput = AudioOutput::AudioEnable( AudioEnable { audio_done: () });
+const AUDIO_RET: AudioOutput = AudioOutput::AudioEnable(AudioEnable { audio_done: () });
 #[derive(ntpnet::TransitionOutputTokensMacro)]
 struct MouthMovingEnable {
     mouth_moving_done: (),
@@ -88,7 +88,8 @@ impl AudioMouthMoving {
             }) => (t, samples),
         };
         self.tb = Some(t);
-        self.p.plot_image("audio_spectrograph",
+        self.p.plot_image(
+            "audio_spectrograph",
             {
                 let mut wf = GrayImage::new(1000, 500);
                 for (i, r) in self.waterfall.iter().enumerate() {
@@ -96,31 +97,42 @@ impl AudioMouthMoving {
                         continue;
                     }
                     for (j, c) in r.iter().enumerate() {
-                        wf.put_pixel((i - AUDIO_BUFFER) as u32, j as u32, Luma::from([(c / 255.) as u8]))
+                        wf.put_pixel(
+                            (i - AUDIO_BUFFER) as u32,
+                            j as u32,
+                            Luma::from([(c / 255.) as u8]),
+                        )
                     }
                 }
                 DynamicImage::ImageLuma8(wf).into_rgb8()
             },
-            ImageCompression::Lossless
+            ImageCompression::Lossless,
         );
         self.waterfall.pop_back();
         self.waterfall.push_front(vec![0.; 500]);
-        self.p.plot_image("mouth_moving",
+        self.p.plot_image(
+            "mouth_moving",
             {
                 let mut wf = GrayImage::new(1000, 500);
                 for (i, r) in self.mouth_moving.iter().enumerate() {
                     for (j, c) in r.iter().enumerate() {
-                        wf.put_pixel(i as u32, j as u32, Luma::from([(f64::clamp(*c, 0., 1.) * 255.) as u8]))
+                        wf.put_pixel(
+                            i as u32,
+                            j as u32,
+                            Luma::from([(f64::clamp(*c, 0., 1.) * 255.) as u8]),
+                        )
                     }
                 }
                 DynamicImage::ImageLuma8(wf).into_rgb8()
             },
-            ImageCompression::Lossless
+            ImageCompression::Lossless,
         );
         if mouth_moving.len() > 0 {
             self.mouth_moving.pop_back();
             self.mouth_moving.push_front(vec![mouth_moving[0]; 500]);
         }
-        MouthMovingOutput::MouthMovingEnable( MouthMovingEnable { mouth_moving_done: () })
+        MouthMovingOutput::MouthMovingEnable(MouthMovingEnable {
+            mouth_moving_done: (),
+        })
     }
 }

@@ -1,8 +1,8 @@
 use clap::Parser;
 use ntpnet::{MultiReactor, Net, ReactorOptions, Token};
+use plotmux::plotmux::{ClientMode, PlotMux};
 use utilities::plot_audio::PlotAudio;
 use utilities::sound_reader::SoundReader;
-use plotmux::plotmux::{ClientMode, PlotMux};
 
 #[derive(Parser)]
 struct Args {
