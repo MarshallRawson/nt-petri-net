@@ -19,8 +19,8 @@ required-features = ["plotmuxui"]
 crossbeam-channel = "0.5.5"
 defer = "0.1.0"
 sha1 = "0.10.0"
-eframe = "0.21.3"
-egui_extras = { version = "0.21.0", features = ["image"] }
+eframe = "0.22.0"
+egui_extras = { version = "0.22.0", features = ["image"] }
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11"
