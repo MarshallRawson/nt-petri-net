@@ -1,5 +1,6 @@
 use crate::plotmux::PlotableData;
 use crate::plotsource::PlotSource;
+use crate::plotpanel::{Panel, PlotPanel};
 use bincode;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use eframe;
@@ -72,7 +73,7 @@ impl TcpHandler {
     }
 }
 
-enum PlotMode {
+pub enum PlotMode {
     Text(),
     Series2d(),
     Image(),
@@ -81,14 +82,9 @@ pub struct PlotMuxUi {
     sources: Vec<Option<PlotSource>>,
     addr: String,
     receiver: Option<Receiver<(usize, PlotableData)>>,
-    source_search: String,
     graph_image: Option<(RetainedImage, RgbaImage, u32, u32)>,
-    show_graph: bool,
-    selected_source: Option<usize>,
-    mode: Option<PlotMode>,
-    series_2d_history: f64,
     font_size: f32,
-    plot_height: f32,
+    root_panel: PlotPanel,
 }
 impl PlotMuxUi {
     pub fn make(graph_png_path: Option<&String>, addr: String) -> Self {
@@ -115,14 +111,9 @@ impl PlotMuxUi {
             sources: vec![],
             addr: addr,
             receiver: None,
-            source_search: "".into(),
             graph_image: graph_image,
-            show_graph: false,
-            selected_source: None,
-            mode: None,
-            series_2d_history: 0.0,
             font_size: 15.0,
-            plot_height: 200.,
+            root_panel: PlotPanel::new("o".to_owned()),
         }
     }
     pub fn spin(mut self) {
@@ -170,17 +161,37 @@ impl eframe::App for PlotMuxUi {
             });
             zoom_delta
         };
+        if zoom_delta != 0.0 {
+            if self.graph_image.is_some() {
+                let (_, graph_image, w, h) = self.graph_image.take().unwrap();
+                let w = (w as f32 + zoom_delta) as u32;
+                let h = (h as f32 + zoom_delta) as u32;
+                let graph_image2 = imageops::resize(
+                    &DynamicImage::ImageRgba8(graph_image.clone()), w, h, imageops::FilterType::Triangle
+                );
+                self.graph_image = Some((RetainedImage::from_color_image(
+                    "graph image",
+                    egui::ColorImage::from_rgba_unmultiplied(
+                        [graph_image2.width() as _, graph_image2.height() as _],
+                        graph_image2.as_raw(),
+                )), graph_image, w, h))
+            }
+        }
         self.font_size = self.font_size.clamp(5.0, 100.0);
         let rich_text = {
             let font = self.font_size;
             move |string: &str| RichText::new(string).size(font)
         };
-        egui::SidePanel::left(egui::Id::new("left_panel")).show(ctx, |ui| {
-            ui.checkbox(&mut self.show_graph, rich_text("Graph"));
+        let source_mode_select = |ui: &mut egui::Ui, show_graph: &mut bool, source_search: &mut String| {
+            ui.checkbox(show_graph, rich_text("Graph"));
+            if *show_graph {
+                return None;
+            }
+            let mut ret = None;
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.label(rich_text("Source: "));
-                    ui.text_edit_singleline(&mut self.source_search);
+                    ui.text_edit_singleline(source_search);
                 });
                 let possible_source_names = self
                     .sources
@@ -188,7 +199,7 @@ impl eframe::App for PlotMuxUi {
                     .enumerate()
                     .filter_map(|(i, source)| {
                         if let Some(source) = source {
-                            if source.name.starts_with(&self.source_search) {
+                            if source.name.starts_with(&(*source_search)) {
                                 Some((i, source.name.clone()))
                             } else {
                                 None
@@ -203,9 +214,9 @@ impl eframe::App for PlotMuxUi {
                     for (i, s) in possible_source_names {
                         ui.horizontal(|ui| {
                             ui.label(rich_text(&s));
-                            let text = ui.button("text");
-                            let series_2d = ui.button("series2d");
-                            let image = ui.button("image");
+                            let text = ui.button(rich_text("text"));
+                            let series_2d = ui.button(rich_text("series2d"));
+                            let image = ui.button(rich_text("image"));
                             buttons.push((
                                 i,
                                 text,
@@ -218,132 +229,131 @@ impl eframe::App for PlotMuxUi {
                 };
                 for (i, text, series_2d, image) in buttons {
                     if text.clicked() {
-                        self.mode = Some(PlotMode::Text());
-                        self.selected_source = Some(i);
-                        break;
+                        ret = Some((PlotMode::Text(), i));
                     } else if series_2d.clicked() {
-                        self.mode = Some(PlotMode::Series2d());
-                        self.selected_source = Some(i);
-                        break;
+                        ret = Some((PlotMode::Series2d(), i));
                     } else if image.clicked() {
-                        self.mode = Some(PlotMode::Image());
-                        self.selected_source = Some(i);
-                        break;
+                        ret = Some((PlotMode::Image(), i));
                     }
                 }
             });
-        });
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if self.show_graph {
-                if zoom_delta != 0.0 {
-                    if self.graph_image.is_some() {
-                        let (_, graph_image, w, h) = self.graph_image.take().unwrap();
-                        let w = (w as f32 + zoom_delta) as u32;
-                        let h = (h as f32 + zoom_delta) as u32;
-                        let graph_image2 = imageops::resize(
-                            &DynamicImage::ImageRgba8(graph_image.clone()), w, h, imageops::FilterType::Triangle
-                        );
-                        self.graph_image = Some((RetainedImage::from_color_image(
-                            "graph image",
-                            egui::ColorImage::from_rgba_unmultiplied(
-                                [graph_image2.width() as _, graph_image2.height() as _],
-                                graph_image2.as_raw(),
-                        )), graph_image, w, h))
-                    }
-
+            ret
+        };
+        let graph_image = &self.graph_image;
+        let plot_graph = |ui: &mut egui::Ui| {
+            if let Some(graph_image) = graph_image {
+                egui::ScrollArea::both()
+                    .show(ui, |ui| {
+                        graph_image.0.show(ui);
+                    });
+            }
+        };
+        let sources = &self.sources;
+        let plot_source = |
+            ui: &mut egui::Ui,
+            source_idx: usize,
+            mode: &PlotMode,
+            series_2d_history: &mut f64,
+            plot_height: &mut f32,
+        | {
+            let mut ret = true;
+            ui.horizontal(|ui| {
+                ui.heading(rich_text(&sources[source_idx].as_ref().unwrap().name));
+                if ui.button(rich_text("exit")).clicked() {
+                    ret = false;
                 }
-                if let Some(graph_image) = &mut self.graph_image {
-                    egui::ScrollArea::both()
+            });
+            if !ret {
+                return false;
+            }
+            match mode {
+                PlotMode::Text() => {
+                    egui::ScrollArea::vertical()
+                        .stick_to_bottom(true)
                         .show(ui, |ui| {
-                            graph_image.0.show(ui);
+                            for t in &sources[source_idx].as_ref().unwrap().texts {
+                                let text = match t {
+                                    (Some(t), text) => rich_text(
+                                        &("[".to_string() + &t.1 + "]: " + &text),
+                                    )
+                                    .color(Color32::from_rgb(t.0 .0, t.0 .1, t.0 .2)),
+                                    (None, text) => rich_text(&text),
+                                };
+                                ui.label(text);
+                            }
                         });
                 }
-            } else {
-                if let Some(source_idx) = self.selected_source {
-                    ui.heading(rich_text(&self.sources[source_idx].as_ref().unwrap().name));
-                    match &self.mode {
-                        Some(m) => match m {
-                            PlotMode::Text() => {
-                                egui::ScrollArea::vertical()
-                                    .stick_to_bottom(true)
-                                    .show(ui, |ui| {
-                                        for t in &self.sources[source_idx].as_ref().unwrap().texts {
-                                            let text = match t {
-                                                (Some(t), text) => rich_text(
-                                                    &("[".to_string() + &t.1 + "]: " + &text),
-                                                )
-                                                .color(Color32::from_rgb(t.0 .0, t.0 .1, t.0 .2)),
-                                                (None, text) => rich_text(text),
-                                            };
-                                            ui.label(text);
-                                        }
-                                    });
-                            }
-                            PlotMode::Series2d() => {
-                                ui.horizontal(|ui| {
-                                    ui.label(rich_text("History:"));
-                                    ui.add(
-                                        egui::DragValue::new(&mut self.series_2d_history)
-                                            .speed(1.0),
-                                    );
-                                    ui.label(rich_text("Plot heights:"));
-                                    ui.add(egui::Slider::new(&mut self.plot_height, 10.0..=1000.));
-                                });
-                                egui::ScrollArea::vertical().show(ui, |ui| {
-                                    for (plot_name, plot) in
-                                        &self.sources[source_idx].as_ref().unwrap().series_plots_2d
-                                    {
-                                        ui.label(rich_text(plot_name));
-                                        plot::Plot::new(plot_name)
-                                            .height(self.plot_height)
-                                            .legend(plot::Legend::default())
-                                            .show(ui, |plot_ui| {
-                                                for (name, (color, vec)) in plot {
-                                                    let plot_vec = {
-                                                        if self.series_2d_history <= 0.0 {
-                                                            self.series_2d_history = 0.0;
-                                                            vec.iter().cloned().collect()
-                                                        } else if let Some(start) =
-                                                            vec.iter().position(|&v| {
-                                                                v.x > vec.back().unwrap().x
-                                                                    - self.series_2d_history
-                                                            })
-                                                        {
-                                                            vec.range(start..)
-                                                                .cloned()
-                                                                .collect::<Vec<_>>()
-                                                        } else {
-                                                            vec![]
-                                                        }
-                                                    };
-                                                    let line = plot::Line::new(
-                                                        plot::PlotPoints::Owned(plot_vec),
-                                                    )
-                                                    .name(name)
-                                                    .color(egui::Color32::from_rgb(
-                                                        color.0, color.1, color.2,
-                                                    ));
-                                                    plot_ui.line(line);
-                                                }
-                                            });
+                PlotMode::Series2d() => {
+                    ui.horizontal(|ui| {
+                        ui.label(rich_text("History:"));
+                        ui.add(
+                            egui::DragValue::new(series_2d_history)
+                                .speed(1.0),
+                        );
+                        ui.label(rich_text("Plot heights:"));
+                        ui.add(egui::Slider::new(plot_height, 10.0..=1000.));
+                    });
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        for (plot_name, plot) in
+                            &sources[source_idx].as_ref().unwrap().series_plots_2d
+                        {
+                            ui.label(rich_text(plot_name));
+                            plot::Plot::new(plot_name)
+                                .height(*plot_height)
+                                .legend(plot::Legend::default())
+                                .show(ui, |plot_ui| {
+                                    for (name, (color, vec)) in plot {
+                                        let plot_vec = {
+                                            if *series_2d_history <= 0.0 {
+                                                *series_2d_history = 0.0;
+                                                vec.iter().cloned().collect()
+                                            } else if let Some(start) =
+                                                vec.iter().position(|&v| {
+                                                    v.x > vec.back().unwrap().x
+                                                        - *series_2d_history
+                                                })
+                                            {
+                                                vec.range(start..)
+                                                    .cloned()
+                                                    .collect::<Vec<_>>()
+                                            } else {
+                                                vec![]
+                                            }
+                                        };
+                                        let line = plot::Line::new(
+                                            plot::PlotPoints::Owned(plot_vec),
+                                        )
+                                        .name(name)
+                                        .color(egui::Color32::from_rgb(
+                                            color.0, color.1, color.2,
+                                        ));
+                                        plot_ui.line(line);
                                     }
                                 });
-                            }
-                            PlotMode::Image() => {
-                                egui::ScrollArea::both().show(ui, |ui| {
-                                    for (image_name, _, plot_image) in
-                                        &self.sources[source_idx].as_ref().unwrap().image_plots
-                                    {
-                                        ui.label(rich_text(image_name));
-                                        plot_image.show(ui);
-                                    }
-                                });
-                            }
-                        },
-                        None => (),
-                    }
+                        }
+                    });
+                }
+                PlotMode::Image() => {
+                    egui::ScrollArea::both().show(ui, |ui| {
+                        for (image_name, _, plot_image) in
+                            &sources[source_idx].as_ref().unwrap().image_plots
+                        {
+                            ui.label(rich_text(image_name));
+                            plot_image.show(ui);
+                        }
+                    });
                 }
             }
+            true
+        };
+        egui::CentralPanel::default().show(ctx, |ui| {
+            self.root_panel.show(ui,
+                Panel::Vertical(egui::TopBottomPanel::top(self.root_panel.name.clone()).resizable(true)),
+                &rich_text,
+                &source_mode_select,
+                &plot_graph,
+                &plot_source,
+            );
         });
     }
 }
