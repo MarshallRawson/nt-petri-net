@@ -154,7 +154,7 @@ impl WorkCluster {
                 for (t_name, t_run) in self.transitions.iter_mut() {
                     for (f_name, case) in &t_run.description.cases {
                         for (i, condition) in case.inputs.iter().enumerate() {
-                            let state_plotting = if plot_options.state {
+                            let state_plotting = if plot_options.local_state {
                                 Some((&mut self.plot_sink, (Instant::now() - start).as_secs_f64()))
                             } else {
                                 None

@@ -11,7 +11,7 @@ use crate::{
 };
 use plotmux::plotsink::PlotSink;
 
-pub fn monitor_thread(
+pub fn pseudo_state_monitor(
     start_state: HashMap<(String, TypeId), (i64, &'static str)>,
     nonblocking_states: HashSet<BTreeSet<(String, TypeId)>>,
     state_delta_monitor: Receiver<StateDelta>,
@@ -20,10 +20,10 @@ pub fn monitor_thread(
     plot_options: PlotOptions,
 ) -> impl Drop {
     let t = thread::Builder::new()
-        .name("monitor".into())
+        .name("pseudo_state_monitor".into())
         .spawn(move || {
             for ((place, _ty), (len, ty_name)) in &start_state {
-                if plot_options.monitor {
+                if plot_options.pseudo_state {
                     plot_sink.plot_series_2d(
                         "pseudo-state",
                         &format!("{}/{}", place, ty_name),
@@ -51,7 +51,7 @@ pub fn monitor_thread(
                     let (sub, add) = state_delta.take();
                     for s in sub {
                         *&mut state.get_mut(&s).unwrap().0 -= 1;
-                        if !add.contains_key(&s) && plot_options.monitor {
+                        if !add.contains_key(&s) && plot_options.pseudo_state {
                             plot_sink.plot_series_2d(
                                 "pseudo-state",
                                 &format!("{}/{}", &s.0, &state[&s].1),
@@ -71,7 +71,7 @@ pub fn monitor_thread(
                         } else {
                             *&mut state.get_mut(&key).unwrap().0 += 1;
                         }
-                        if plot_options.monitor {
+                        if plot_options.pseudo_state {
                             plot_sink.plot_series_2d(
                                 "pseudo-state",
                                 &format!("{}/{}", &key.0, &ty_name),
@@ -92,7 +92,7 @@ pub fn monitor_thread(
                     plot_sink.println(&format!("failed to terminate work-cluster-{}", i));
                 }
             }
-            if plot_options.monitor {
+            if plot_options.pseudo_state {
                 plot_sink.println(&format!(
                     "exiting with state: {:?}",
                     state

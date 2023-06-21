@@ -14,6 +14,7 @@ itertools = "0.10.3"
 tempfile = "3.3.0"
 bimap = "0.6.2"
 defer = "0.1.0"
+procinfo = "0.4.2"
 
 [dev-dependencies]
 utilities = { path = "utilities" }

@@ -40,8 +40,9 @@ impl Deref for Token {
     }
 }
 
-mod monitor;
+mod memory_monitor;
 mod multi_reactor;
+mod pseudo_state_monitor;
 pub use multi_reactor::MultiReactor;
 mod net;
 pub use net::Net;
@@ -65,13 +66,15 @@ pub enum ReactorOptions {
 #[derive(Args, Clone, Default)]
 pub struct PlotOptions {
     #[arg(short, long)]
-    state: bool,
+    local_state: bool,
     #[arg(short, long)]
     reactor_timing: bool,
     #[arg(short, long)]
     transition_timing: bool,
     #[arg(short, long)]
-    monitor: bool,
+    pseudo_state: bool,
+    #[arg(short, long)]
+    memory_profile: Option<f64>,
 }
 
 impl From<&Option<ReactorOptions>> for PlotOptions {

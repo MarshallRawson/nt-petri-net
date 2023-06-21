@@ -7,8 +7,9 @@ use std::thread;
 use plotmux::{plotmux::PlotMux, plotsink::PlotSink};
 
 use crate::{
-    monitor::monitor_thread,
+    memory_monitor::memory_monitor,
     net::Net,
+    pseudo_state_monitor::pseudo_state_monitor,
     state::{StateBlockable, StateDelta},
     work_cluster::WorkCluster,
     PlotOptions, ReactorOptions, Token,
@@ -20,7 +21,8 @@ pub struct MultiReactor {
     pseudo_hashes: Vec<u64>,
     start_state: HashMap<(String, TypeId), (i64, &'static str)>,
     state_delta_monitor: Receiver<StateDelta>,
-    monitor_plot: PlotSink,
+    pseudo_state_monitor_plot: PlotSink,
+    memory_monitor_plot: PlotSink,
     reactor_plot: PlotSink,
 }
 
@@ -212,7 +214,8 @@ impl MultiReactor {
             pseudo_hashes: pseudo_hashes,
             start_state: start_state,
             state_delta_monitor: state_delta_monitor,
-            monitor_plot: plotmux.add_plot_sink("reactor/monitor"),
+            pseudo_state_monitor_plot: plotmux.add_plot_sink("reactor/monitor/pseudo_state"),
+            memory_monitor_plot: plotmux.add_plot_sink("reactor/monitor/memory"),
             reactor_plot: plotmux.add_plot_sink("reactor"),
         }
     }
@@ -240,7 +243,12 @@ impl MultiReactor {
                     .expect(&format!("unable to spawn work-cluster-{} thread", i)),
             );
         }
-        let monitor_thread = monitor_thread(
+        let memory_monitor_thread = if let Some(period) = plot_options.memory_profile {
+            Some(memory_monitor(period, self.memory_monitor_plot))
+        } else {
+            None
+        };
+        let pseudo_state_monitor_thread = pseudo_state_monitor(
             self.start_state,
             (0..threads.len())
                 .map(|_| nonblocking_receiver.recv().unwrap())
@@ -249,7 +257,7 @@ impl MultiReactor {
                 .collect::<HashSet<BTreeSet<_>>>(),
             self.state_delta_monitor,
             exit_txs,
-            self.monitor_plot,
+            self.pseudo_state_monitor_plot,
             plot_options,
         );
         let end_state = threads
@@ -276,7 +284,8 @@ impl MultiReactor {
                 }
                 acc
             });
-        drop(monitor_thread);
+        drop(pseudo_state_monitor_thread);
+        drop(memory_monitor_thread);
         end_state
     }
 }
