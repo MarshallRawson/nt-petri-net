@@ -1,15 +1,17 @@
 use crate::plotmuxui::PlotMode;
 use eframe::egui;
+use serde::{Serialize, Deserialize};
 
 pub enum Panel {
     Horizontal(egui::SidePanel),
     Vertical(egui::TopBottomPanel),
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct PlotPanel {
     pub name: String,
     // left, right, up, down
-    children: [(&'static str, Option<Box<PlotPanel>>); 4],
+    children: [(String, Option<Box<PlotPanel>>); 4],
     series_2d_history: f64,
     plot_height: f32,
     show_graph: bool,
@@ -17,6 +19,7 @@ pub struct PlotPanel {
     source: Option<(PlotMode, usize)>,
 }
 
+#[derive(Serialize, Deserialize)]
 enum Child {
     Left = 0,
     Down,
@@ -28,7 +31,7 @@ impl PlotPanel {
     pub fn new(name: String) -> Self {
         Self {
             name: name,
-            children: [("<", None), ("\\/", None), ("/\\", None), (">", None)],
+            children: [("<".into(), None), ("\\/".into(), None), ("/\\".into(), None), (">".into(), None)],
             series_2d_history: 0.0,
             plot_height: 200.0,
             show_graph: false,
@@ -146,7 +149,7 @@ fn tile(
     s: &dyn Fn(String) -> Panel,
     name: String,
     idx: Child,
-    children: &mut [(&'static str, Option<Box<PlotPanel>>); 4],
+    children: &mut [(String, Option<Box<PlotPanel>>); 4],
     rich_text: &dyn Fn(&str) -> egui::RichText,
     source_search: &dyn Fn(&mut egui::Ui, &mut bool, &mut String) -> Option<(PlotMode, usize)>,
     plot_graph: &dyn Fn(&mut egui::Ui),

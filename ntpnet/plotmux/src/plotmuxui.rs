@@ -16,10 +16,13 @@ use image::DynamicImage;
 use image::DynamicImage::{ImageRgb8, ImageRgba8};
 use image::RgbaImage;
 use std::io::Read;
+use std::fs;
 use std::net::TcpStream;
 use std::thread;
-use std::thread::sleep;
+use std::thread::{JoinHandle, sleep};
 use std::time::Duration;
+use serde::{Serialize, Deserialize};
+use tinyfiledialogs::{open_file_dialog, save_file_dialog};
 
 struct TcpHandler {
     stream: TcpStream,
@@ -73,6 +76,7 @@ impl TcpHandler {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub enum PlotMode {
     Text(),
     Series2d(),
@@ -85,6 +89,7 @@ pub struct PlotMuxUi {
     graph_image: Option<(RetainedImage, RgbaImage, u32, u32)>,
     font_size: f32,
     root_panel: PlotPanel,
+    dialog_thread: Option<JoinHandle<Option<PlotPanel>>>,
 }
 impl PlotMuxUi {
     pub fn make(graph_png_path: Option<&String>, addr: String) -> Self {
@@ -120,6 +125,7 @@ impl PlotMuxUi {
             graph_image: graph_image,
             font_size: 15.0,
             root_panel: PlotPanel::new("o".to_owned()),
+            dialog_thread: None,
         }
     }
     pub fn spin(mut self) {
@@ -140,6 +146,23 @@ impl PlotMuxUi {
     }
 }
 
+fn open_layout() -> Option<PlotPanel> {
+    if let Some(layout_file) = open_file_dialog("Open Layout", "~", None) {
+        if let Ok(bytes) = fs::read(layout_file) {
+            if let Ok(panel) = bincode::deserialize(&bytes) {
+                return Some(panel);
+            }
+        }
+    }
+    None
+}
+
+fn save_layout(bytes: &[u8]) {
+    if let Some(layout_file) = save_file_dialog("Save Layout", "~") {
+        fs::write(layout_file, bytes).unwrap();
+    }
+}
+
 impl eframe::App for PlotMuxUi {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         while let Ok((idx, new_data)) = self.receiver.as_ref().unwrap().try_recv() {
@@ -155,6 +178,19 @@ impl eframe::App for PlotMuxUi {
                 _ => self.sources[idx].as_mut().unwrap().new_data(new_data),
             }
         }
+        let dialog_thread = self.dialog_thread.take();
+        if let Some(dialog_thread) = dialog_thread {
+            if dialog_thread.is_finished() {
+                if let Ok(panel) = dialog_thread.join() {
+                    if let Some(panel) = panel {
+                        self.root_panel = panel;
+                    }
+                }
+                self.dialog_thread = None;
+            } else {
+                self.dialog_thread = Some(dialog_thread);
+            }
+        }
         let zoom_delta = {
             let mut zoom_delta = 0.0;
             ctx.input(|i| {
@@ -163,6 +199,25 @@ impl eframe::App for PlotMuxUi {
                 } else if i.modifiers.ctrl {
                     zoom_delta = (i.zoom_delta() - 1.0) * 2.0;
                     zoom_delta *= 100.;
+                }
+                if self.dialog_thread.is_none() {
+                    if i.modifiers.ctrl && i.key_released(egui::Key::O) {
+                        self.dialog_thread = Some(thread::Builder::new()
+                            .name("plotmuxui-open-dialog".into())
+                            .spawn(open_layout)
+                            .unwrap()
+                        );
+                    } else if i.modifiers.ctrl && i.key_released(egui::Key::S) {
+                        let bytes = bincode::serialize(&self.root_panel).unwrap();
+                        self.dialog_thread = Some(thread::Builder::new()
+                            .name("plotmuxui-save-dialog".into())
+                            .spawn(move || {
+                                save_layout(&bytes);
+                                None
+                            })
+                            .unwrap()
+                        );
+                    }
                 }
             });
             zoom_delta
