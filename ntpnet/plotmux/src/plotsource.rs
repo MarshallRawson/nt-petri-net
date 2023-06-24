@@ -43,6 +43,7 @@ impl PlotSource {
     }
     pub fn new_data(&mut self, d: PlotableData) {
         match d {
+            PlotableData::InitTcp(_) => unimplemented!(),
             PlotableData::InitSource(s) => {
                 *self = Self::make(s);
             }

@@ -4,12 +4,15 @@ use defer::defer;
 use image::{ImageBuffer, Rgb, RgbImage};
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
+use snap::raw::Encoder;
+use std::collections::HashMap;
 use std::env;
 use std::io::Write;
-use std::net::{TcpListener, TcpStream}; //, IpAddr, Ipv4Addr, Shutdown};
+use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
+use std::thread::JoinHandle;
 
 use crate::plotsink::PlotSink;
 
@@ -31,6 +34,7 @@ pub type PlotSender = Sender<PlotableData>;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum PlotableData {
+    InitTcp(String),
     InitSource(String),
     String(PlotableString),
     InitSeriesPlot2d(String),
@@ -150,12 +154,12 @@ pub enum ClientMode {
     Remote(String),
 }
 
-fn make_client(png_path: Option<&PathBuf>, mode: ClientMode) -> TcpStream {
+fn make_client(png_path: Option<&PathBuf>, mode: ClientMode) -> (TcpStream, String, u16) {
     let listener = match &mode {
         ClientMode::Local() => TcpListener::bind("localhost:0").unwrap(),
         ClientMode::Remote(addr) => TcpListener::bind(addr).unwrap(),
     };
-    match mode {
+    let (addr, port) = match mode {
         ClientMode::Local() => {
             let port = listener.local_addr().unwrap().port();
             let mut cmd = Command::new(
@@ -173,27 +177,37 @@ fn make_client(png_path: Option<&PathBuf>, mode: ClientMode) -> TcpStream {
                 cmd.arg("--graph-png").arg(format!("{}", png_path));
             }
             println!("{:?}", cmd);
+            let addr = format!("localhost:{}", port);
             cmd.arg("--addr")
-                .arg(format!("localhost:{}", port))
+                .arg(addr.clone())
                 .spawn()
                 .expect("starting plotmuxui");
+            ("localhost".into(), port)
         }
         ClientMode::Remote(addr) => {
             println!("cargo run --bin plotmuxui -- --addr {}", addr);
+            (
+                addr[0..addr.rfind(":").unwrap()].into(),
+                listener.local_addr().unwrap().port(),
+            )
         }
-    }
+    };
     let (client, _socket) = listener.accept().unwrap();
-    client
+    (client, addr, port)
 }
 
 pub struct PlotMux {
     receivers: Vec<PlotReceiver>,
-    client: Option<TcpStream>,
+    tcp_streams: Vec<(Option<TcpStream>, Encoder, Vec<PlotableData>)>,
+    tcp_listeners: HashMap<usize, JoinHandle<Option<TcpStream>>>,
+    client: Option<(TcpStream, String, u16)>,
 }
 impl PlotMux {
     pub fn make() -> Self {
         PlotMux {
             receivers: vec![],
+            tcp_streams: vec![],
+            tcp_listeners: HashMap::new(),
             client: None,
         }
     }
@@ -201,10 +215,11 @@ impl PlotMux {
         let (sender, receiver) = bounded(100);
         let c = color(&name);
         self.receivers.push(receiver.clone());
+        self.tcp_streams.push((None, snap::raw::Encoder::new(), vec![]));
         PlotSink::make(name.into(), c, (sender, receiver))
     }
-    pub fn make_ready(mut self, png_path: Option<&PathBuf>, client: ClientMode) -> impl Drop {
-        self.client = Some(make_client(png_path, client));
+    pub fn make_ready(mut self, png_path: Option<&PathBuf>, mode: ClientMode) -> impl Drop {
+        self.client = Some(make_client(png_path, mode));
         let join_handle = thread::Builder::new()
             .name("plotmux-server".into())
             .spawn(move || self.spin())
@@ -221,23 +236,82 @@ impl PlotMux {
                 }
                 let mut encoder = snap::raw::Encoder::new();
                 loop {
+                    self.tcp_listeners = self
+                        .tcp_listeners
+                        .drain()
+                        .filter_map(|(i, l)| {
+                            if l.is_finished() {
+                                if let Ok(mut s) = l.join() {
+                                    let (_, encoder, buffer) = &mut self.tcp_streams[i];
+                                    for d in buffer {
+                                        let buf = bincode::serialize(&(plot_idx[i], d)).unwrap();
+                                        let buf = encoder.compress_vec(&buf).unwrap();
+                                        let len = bincode::serialize(&buf.len()).unwrap();
+                                        s.as_mut().unwrap().write(&len).unwrap();
+                                        s.as_mut().unwrap().write(&buf).unwrap();
+                                    }
+                                    self.tcp_streams[i].2.clear();
+                                    self.tcp_streams[i].0 = s;
+                                }
+                                None
+                            } else {
+                                Some((i, l))
+                            }
+                        })
+                        .collect();
                     let oper = sel.select();
                     let idx = oper.index();
                     match oper.recv(&rs[idx]) {
                         Ok(data) => {
-                            let buf = bincode::serialize(&(plot_idx[idx], data)).unwrap();
-                            let buf = encoder.compress_vec(&buf).unwrap();
-                            if let Err(_) = self
-                                .client
-                                .as_mut()
-                                .unwrap()
-                                .write(&bincode::serialize(&buf.len()).unwrap())
-                            {
-                                continue;
-                            }
-                            if let Err(_) = self.client.as_mut().unwrap().write(&buf) {
-                                continue;
-                            }
+                            match data {
+                                PlotableData::InitSource(_) => {
+                                    let listener = TcpListener::bind(&format!(
+                                        "{}:0",
+                                        self.client.as_ref().unwrap().1
+                                    ))
+                                    .unwrap();
+                                    let port = listener.local_addr().unwrap().port();
+                                    let addr =
+                                        format!("{}:{}", self.client.as_ref().unwrap().1, port);
+                                    self.tcp_listeners.insert(
+                                        idx,
+                                        std::thread::spawn(move || {
+                                            if let Ok((stream, _)) = listener.accept() {
+                                                Some(stream)
+                                            } else {
+                                                None
+                                            }
+                                        }),
+                                    );
+                                    let init_tcp = PlotableData::InitTcp(addr);
+                                    let buf = bincode::serialize(&(plot_idx[idx], init_tcp)).unwrap();
+                                    let buf = encoder.compress_vec(&buf).unwrap();
+                                    let len = bincode::serialize(&buf.len()).unwrap();
+                                    if let Err(_) = self.client.as_mut().unwrap().0.write(&len) {
+                                        continue;
+                                    }
+                                    if let Err(_) =  self.client.as_mut().unwrap().0.write(&buf) {
+                                        continue;
+                                    }
+                                    self.tcp_streams[idx].2.push(data);
+                                }
+                                _ => {
+                                    let (stream, encoder, buffer) = &mut self.tcp_streams[idx];
+                                    if let Some(stream) = stream.as_mut() {
+                                        let buf = bincode::serialize(&(plot_idx[idx], data)).unwrap();
+                                        let buf = encoder.compress_vec(&buf).unwrap();
+                                        let len = bincode::serialize(&buf.len()).unwrap();
+                                        if let Err(_) = stream.write(&len) {
+                                            continue;
+                                        }
+                                        if let Err(_) = stream.write(&buf) {
+                                            continue;
+                                        }
+                                    } else {
+                                        buffer.push(data);
+                                    }
+                                },
+                            };
                         }
                         Err(_) => {
                             return idx;

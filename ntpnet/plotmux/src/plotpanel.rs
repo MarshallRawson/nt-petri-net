@@ -1,6 +1,6 @@
 use crate::plotmuxui::PlotMode;
 use eframe::egui;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub enum Panel {
     Horizontal(egui::SidePanel),
@@ -31,7 +31,12 @@ impl PlotPanel {
     pub fn new(name: String) -> Self {
         Self {
             name: name,
-            children: [("<".into(), None), ("\\/".into(), None), ("/\\".into(), None), (">".into(), None)],
+            children: [
+                ("<".into(), None),
+                ("\\/".into(), None),
+                ("/\\".into(), None),
+                (">".into(), None),
+            ],
             series_2d_history: 0.0,
             plot_height: 200.0,
             show_graph: false,
