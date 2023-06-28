@@ -8,11 +8,13 @@ use utilities::sound_reader::SoundReader;
 struct Args {
     #[command(subcommand)]
     reactor_plot_options: Option<ReactorOptions>,
+    #[arg(short, long)]
+    remote_plotmux: Option<String>,
 }
 
 fn main() {
     let args = Args::parse();
-    let mut plotmux = PlotMux::make();
+    let mut plotmux = PlotMux::make(ClientMode::parse(args.remote_plotmux));
     let n = Net::make()
         .set_start_tokens("e", vec![Token::new(())])
         .place_to_transition("e", "_e", "sound_reader")
@@ -30,7 +32,7 @@ fn main() {
         .place_to_transition("audio", "audio", "plot_audio");
     let wc = vec![n.transitions.keys().cloned().collect()];
     let r = MultiReactor::make(n, wc, &mut plotmux);
-    let pm = plotmux.make_ready(Some(&r.png()), ClientMode::Local());
+    let pm = plotmux.make_ready(Some(&r.png()));
     r.run(&args.reactor_plot_options);
     drop(pm);
 }

@@ -33,7 +33,7 @@ impl TcpHandler {
         loop {
             match TcpStream::connect(addr.clone()) {
                 Err(e) => {
-                    println!("Error while connecting to TCP: {}, trying again!", e);
+                    println!("Error while connecting to TCP: {} with err '{}', trying again!", addr, e);
                     sleep(Duration::from_secs(1));
                 }
                 Ok(stream) => {
@@ -92,7 +92,7 @@ pub struct PlotMuxUi {
     dialog_thread: Option<JoinHandle<Option<PlotPanel>>>,
 }
 impl PlotMuxUi {
-    pub fn make(graph_png_path: Option<&String>, addr: String) -> Self {
+    pub fn make(graph_png_path: Option<&String>, addr: String, port: u16) -> Self {
         let graph_image = if let Some(graph_png_path) = graph_png_path {
             let graph_image0 = ImageReader::open(graph_png_path).unwrap();
             let graph_image1 = graph_image0.decode().unwrap();
@@ -120,7 +120,7 @@ impl PlotMuxUi {
         };
         PlotMuxUi {
             sources: vec![],
-            addr: addr,
+            addr: format!("{}:{}", addr, port),
             tcp_threads: vec![],
             receiver: None,
             graph_image: graph_image,

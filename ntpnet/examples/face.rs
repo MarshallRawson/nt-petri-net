@@ -24,7 +24,8 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let mut plotmux = PlotMux::make();
+    let plotmux_mode = ClientMode::parse(args.remote_plotmux);
+    let mut plotmux = PlotMux::make(plotmux_mode);
     let n = Net::make()
         .set_start_tokens("camera_enable", vec![Token::new(())])
         .add_transition(
@@ -92,12 +93,7 @@ fn main() {
         &mut plotmux,
     );
     println!("{:?}", r.png());
-    let plotmux_mode = if let Some(addr) = args.remote_plotmux {
-        ClientMode::Remote(addr)
-    } else {
-        ClientMode::Local()
-    };
-    let pm = plotmux.make_ready(Some(&r.png()), plotmux_mode);
+    let pm = plotmux.make_ready(Some(&r.png()));
     r.run(&args.reactor_plot_options);
     drop(pm);
 }
