@@ -6,6 +6,8 @@ use plotmux::plotmux::{ClientMode, PlotMux};
 struct Args {
     #[command(subcommand)]
     reactor_plot_options: Option<ReactorOptions>,
+    #[arg(short, long)]
+    remote_plotmux: Option<String>,
 }
 
 mod sin_gen {
@@ -105,7 +107,7 @@ mod fft_real {
 
 fn main() {
     let args = Args::parse();
-    let mut plotmux = PlotMux::make();
+    let mut plotmux = PlotMux::make(ClientMode::parse(args.remote_plotmux));
     let n = Net::make()
         .set_start_tokens(
             "time",
@@ -125,6 +127,6 @@ fn main() {
         .transition_to_place("fft", "s", "S");
     let wc = vec![n.transitions.keys().cloned().collect()];
     let r = MultiReactor::make(n, wc, &mut plotmux);
-    let _pm = plotmux.make_ready(Some(&r.png()), ClientMode::Local());
+    let _pm = plotmux.make_ready(Some(&r.png()));
     println!("{:?}", r.run(&args.reactor_plot_options));
 }

@@ -1,3 +1,9 @@
+use std::io::Write;
+use std::thread;
+use std::thread::JoinHandle;
+use crossbeam_channel::bounded;
+use std::net::TcpListener;
+
 use crate::plotmux::{
     color, Color, InitSeries2d, PlotReceiver, PlotSender, PlotableData, PlotableDeltaImage,
     PlotableInitImage, PlotableString, RgbDeltaImage, Series2d, Series2dVec,
@@ -18,21 +24,28 @@ pub enum ImageCompression {
 pub struct PlotSink {
     name: (Color, String),
     pipe: (PlotSender, PlotReceiver),
+    _tcp_thread: JoinHandle<()>,
     first_send: bool,
     full_warn: bool,
     series_plots_2d: HashMap<String, (usize, HashMap<String, usize>)>,
     image_plots: HashMap<String, (usize, Option<RgbImage>)>,
 }
 impl PlotSink {
-    pub fn make(name: String, color: Color, pipe: (PlotSender, PlotReceiver)) -> Self {
-        Self {
-            name: (color, name),
-            pipe: pipe,
-            first_send: true,
-            full_warn: false,
-            series_plots_2d: HashMap::new(),
-            image_plots: HashMap::new(),
-        }
+    pub fn make(idx: usize, name: String, addr: String, color: Color) -> (Self, u16) {
+        let pipe = bounded(100);
+        let (port, tcp_thread) = make_tcp_sender(idx, name.clone(), addr, pipe.1.clone());
+        (
+            Self {
+                name: (color, name),
+                pipe: pipe,
+                _tcp_thread: tcp_thread,
+                first_send: true,
+                full_warn: false,
+                series_plots_2d: HashMap::new(),
+                image_plots: HashMap::new(),
+            },
+            port
+        )
     }
     fn send(&mut self, d: PlotableData) -> bool {
         if self.first_send {
@@ -197,4 +210,33 @@ impl PlotSink {
             }
         }
     }
+}
+
+fn make_tcp_sender(idx: usize, name: String, addr: String, recv: PlotReceiver) -> (u16, JoinHandle<()>) {
+    let thread_name = name+"-tcp-sender-thread";
+    let exp = format!("failed to spawn thread: {}", thread_name);
+    let mut encoder = snap::raw::Encoder::new();
+    let listener = TcpListener::bind(addr+":0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    (
+        port,
+        thread::Builder::new()
+            .name(thread_name)
+            .spawn(move || {
+                if let Ok((mut stream, _)) = listener.accept() {
+                    while let Ok(data) = recv.recv() {
+                        let buf = bincode::serialize(&(idx, data)).unwrap();
+                        let buf = encoder.compress_vec(&buf).unwrap();
+                        let len = bincode::serialize(&buf.len()).unwrap();
+                        if let Err(_) = stream.write(&len) {
+                            continue;
+                        }
+                        if let Err(_) = stream.write(&buf) {
+                            continue;
+                        }
+                    }
+                }
+            })
+            .expect(&exp)
+    )
 }

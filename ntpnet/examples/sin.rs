@@ -31,7 +31,7 @@ use ntpnet::{reactor, Net, Token};
 use plotmux::plotmux::{ClientMode, PlotMux};
 
 fn main() {
-    let mut plotmux = PlotMux::make();
+    let mut plotmux = PlotMux::make(ClientMode::Local());
     let n = Net::make()
         .set_start_tokens("time", vec![Token::new(0.)])
         .place_to_transition("time", "t", "sin")
@@ -39,7 +39,7 @@ fn main() {
         .transition_to_place("sin", "t", "time");
     let png = n.png();
     let r = reactor(n, &mut plotmux);
-    let pm = plotmux.make_ready(Some(&png), ClientMode::Local());
+    let pm = plotmux.make_ready(Some(&png));
     r.run(&None);
     drop(pm);
 }
