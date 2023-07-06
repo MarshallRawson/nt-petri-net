@@ -2238,6 +2238,7 @@ dependencies = [
  "clap",
  "crossbeam-channel",
  "defer",
+ "derivative",
  "eframe",
  "egui_extras",
  "image",

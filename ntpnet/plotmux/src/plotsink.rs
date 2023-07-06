@@ -4,6 +4,8 @@ use std::thread::JoinHandle;
 use crossbeam_channel::bounded;
 use std::net::TcpListener;
 
+use derivative::Derivative;
+use defer::defer;
 use crate::plotmux::{
     color, Color, InitSeries2d, PlotReceiver, PlotSender, PlotableData, PlotableDeltaImage,
     PlotableInitImage, PlotableString, RgbDeltaImage, Series2d, Series2dVec,
@@ -20,11 +22,14 @@ pub enum ImageCompression {
     Lvl3 = 0b1111_1000,
 }
 
-#[derive(Debug)]
+
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct PlotSink {
     name: (Color, String),
     pipe: (PlotSender, PlotReceiver),
-    _tcp_thread: JoinHandle<()>,
+    #[derivative(Debug="ignore")]
+    _tcp_thread: Box<dyn Send>,
     first_send: bool,
     full_warn: bool,
     series_plots_2d: HashMap<String, (usize, HashMap<String, usize>)>,
@@ -38,7 +43,7 @@ impl PlotSink {
             Self {
                 name: (color, name),
                 pipe: pipe,
-                _tcp_thread: tcp_thread,
+                _tcp_thread: Box::new(defer(|| tcp_thread.join().unwrap())),
                 first_send: true,
                 full_warn: false,
                 series_plots_2d: HashMap::new(),

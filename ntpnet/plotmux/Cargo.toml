@@ -29,3 +29,4 @@ image = { version = "0.24", features = ["jpeg", "png"] }
 clap = "4.0.18"
 snap = "1.0.5"
 tinyfiledialogs = "3.9.1"
+derivative = "2.2.0"
