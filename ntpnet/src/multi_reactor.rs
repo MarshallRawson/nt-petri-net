@@ -80,7 +80,7 @@ impl MultiReactor {
                     let cluster_idx = work_clusters
                         .iter()
                         .position(|ts| ts.contains(t_name))
-                        .unwrap();
+                        .expect(&format!("transition: '{}' is not present in any work clusters {:?}", t_name, work_clusters));
                     place_io_clusters
                         .get_mut(p_name)
                         .unwrap()
