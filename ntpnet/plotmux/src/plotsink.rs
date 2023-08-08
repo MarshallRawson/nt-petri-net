@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::thread;
 use std::thread::JoinHandle;
-use crossbeam_channel::bounded;
+use crossbeam_channel::{Receiver, Sender, bounded};
 use std::net::TcpListener;
 
 use derivative::Derivative;
@@ -25,29 +25,25 @@ pub enum ImageCompression {
 
 #[derive(Derivative)]
 #[derivative(Debug)]
-pub struct PlotSink {
+struct ClientSender {
     name: (Color, String),
     pipe: (PlotSender, PlotReceiver),
     #[derivative(Debug="ignore")]
     _tcp_thread: Box<dyn Send>,
     first_send: bool,
     full_warn: bool,
-    series_plots_2d: HashMap<String, (usize, HashMap<String, usize>)>,
-    image_plots: HashMap<String, (usize, Option<RgbImage>)>,
 }
-impl PlotSink {
-    pub fn make(idx: usize, name: String, addr: String, color: Color) -> (Self, u16) {
+impl ClientSender {
+    pub fn make(idx: usize, name: String, c: Color, addr: String) -> (Self, u16) {
         let pipe = bounded(100);
         let (port, tcp_thread) = make_tcp_sender(idx, name.clone(), addr, pipe.1.clone());
         (
             Self {
-                name: (color, name),
+                name: (c, name),
                 pipe: pipe,
                 _tcp_thread: Box::new(defer(|| tcp_thread.join().unwrap())),
                 first_send: true,
                 full_warn: false,
-                series_plots_2d: HashMap::new(),
-                image_plots: HashMap::new(),
             },
             port
         )
@@ -85,10 +81,65 @@ impl PlotSink {
         }
         ret
     }
+}
+
+#[derive(Debug)]
+pub struct PlotSink {
+    name: (Color, String),
+    addr: String,
+    series_plots_2d: HashMap<String, (usize, HashMap<String, usize>)>,
+    image_plots: HashMap<String, (usize, Option<RgbImage>)>,
+    idx: usize,
+    senders: Vec<ClientSender>,
+    new_sender: (Receiver<()>, Sender<u16>),
+}
+impl PlotSink {
+    pub fn make(idx: usize, name: String, addr: String, color: Color, new_sender: (Receiver<()>, Sender<u16>)) -> Self {
+        Self {
+            name: (color, name),
+            addr: addr,
+            series_plots_2d: HashMap::new(),
+            image_plots: HashMap::new(),
+            idx: idx,
+            senders: vec![],
+            new_sender: new_sender,
+        }
+    }
+    fn add_sender(&mut self) -> u16 {
+        let (mut s, p) = ClientSender::make(self.idx, self.name.1.clone(), self.name.0, self.addr.clone());
+        for (plot, (plot_idx, line)) in &self.series_plots_2d {
+            s.send(PlotableData::InitSeriesPlot2d(plot.clone()));
+            for (line_name, _line_idx) in line {
+                s.send(InitSeries2d::make(*plot_idx, &line_name));
+            }
+        }
+        for (plot, (_plot_idx, img)) in &self.image_plots {
+            if let Some(image) = img {
+                s.send(PlotableInitImage::make(plot.clone(), image.clone()));
+            }
+        }
+        self.senders.push(s);
+        p
+    }
+    fn check_new_sender(&mut self) {
+        if let Ok(()) = self.new_sender.0.try_recv() {
+            let sender = self.add_sender();
+            let _ = self.new_sender.1.send(sender);
+        }
+    }
+    fn send(&mut self, d: PlotableData) -> bool {
+        let mut ret = true;
+        for i in 0..self.senders.len() {
+            ret &= self.senders[i].send(d.clone());
+        }
+        ret
+    }
     pub fn println(&mut self, s: &str) {
+        self.check_new_sender();
         self.println_c(None, s);
     }
     pub fn println2(&mut self, channel: &str, s: &str) {
+        self.check_new_sender();
         self.println_c(Some(channel), s);
     }
     fn println_c(&mut self, channel: Option<&str>, s: &str) {
@@ -143,6 +194,7 @@ impl PlotSink {
         }
     }
     pub fn plot_series_2d(&mut self, plot_name: &str, series_name: &str, x: f64, y: f64) {
+        self.check_new_sender();
         self.init_series_2d(&plot_name, &series_name);
         let plot_idx = self.series_plots_2d[plot_name].0;
         let series_idx = self.series_plots_2d[plot_name].1[series_name];
@@ -154,18 +206,21 @@ impl PlotSink {
         series_name: &str,
         data: Vec<(f64, f64)>,
     ) {
+        self.check_new_sender();
         self.init_series_2d(&plot_name, &series_name);
         let plot_idx = self.series_plots_2d[plot_name].0;
         let series_idx = self.series_plots_2d[plot_name].1[series_name];
         self.send(Series2dVec::make_series(plot_idx, series_idx, data));
     }
     pub fn plot_line_2d(&mut self, plot_name: &str, series_name: &str, data: Vec<(f64, f64)>) {
+        self.check_new_sender();
         self.init_series_2d(&plot_name, &series_name);
         let plot_idx = self.series_plots_2d[plot_name].0;
         let series_idx = self.series_plots_2d[plot_name].1[series_name];
         self.send(Series2dVec::make_line(plot_idx, series_idx, data));
     }
     pub fn plot_image(&mut self, channel: &str, image: image::RgbImage, mask: ImageCompression) {
+        self.check_new_sender();
         if !self.image_plots.contains_key(channel)
             || self.image_plots[channel].1.is_none()
             || self.image_plots[channel].1.as_ref().unwrap().dimensions() != image.dimensions()

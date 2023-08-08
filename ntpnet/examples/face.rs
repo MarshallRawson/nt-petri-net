@@ -93,7 +93,7 @@ fn main() {
         &mut plotmux,
     );
     println!("{:?}", r.png());
-    let pm = plotmux.make_ready(Some(&r.png()));
+    let pm = plotmux.make_ready(Some(r.png()));
     r.run(&args.reactor_plot_options);
     drop(pm);
 }

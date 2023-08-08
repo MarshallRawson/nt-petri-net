@@ -47,7 +47,7 @@ fn main() {
         ],
         &mut plotmux,
     );
-    let pm = plotmux.make_ready(Some(&multi_reactor.png()));
+    let pm = plotmux.make_ready(Some(multi_reactor.png()));
     multi_reactor.run(&args.reactor_plot_options);
     drop(pm);
 }

@@ -127,6 +127,6 @@ fn main() {
         .transition_to_place("fft", "s", "S");
     let wc = vec![n.transitions.keys().cloned().collect()];
     let r = MultiReactor::make(n, wc, &mut plotmux);
-    let _pm = plotmux.make_ready(Some(&r.png()));
+    let _pm = plotmux.make_ready(Some(r.png()));
     println!("{:?}", r.run(&args.reactor_plot_options));
 }

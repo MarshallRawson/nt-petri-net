@@ -1,5 +1,5 @@
 use bincode;
-use crossbeam_channel::{Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, unbounded};
 use defer::defer;
 use image::{ImageBuffer, Rgb, RgbImage};
 use serde::{Deserialize, Serialize};
@@ -164,7 +164,7 @@ impl ClientMode {
     }
 }
 
-fn make_client(png_path: Option<&PathBuf>, mode: &ClientMode) -> TcpStream {
+fn make_client(png_path: &Option<PathBuf>, mode: &ClientMode) -> TcpStream {
     let listener = match mode {
         ClientMode::Local() => TcpListener::bind("localhost:0").unwrap(),
         ClientMode::Remote((addr, port)) => TcpListener::bind(format!("{}:{}", addr, port)).unwrap(),
@@ -205,7 +205,7 @@ fn make_client(png_path: Option<&PathBuf>, mode: &ClientMode) -> TcpStream {
 pub struct PlotMux {
     mode: ClientMode,
     addr: String,
-    ports: Vec<u16>,
+    new_client_pulls: Vec<( Receiver<u16>, Sender<()>)>,
 }
 impl PlotMux {
     pub fn make(mode: ClientMode) -> Self {
@@ -217,36 +217,56 @@ impl PlotMux {
         PlotMux {
             addr: addr,
             mode: mode,
-            ports: vec![],
+            new_client_pulls: vec![],
         }
     }
     pub fn add_plot_sink(&mut self, name: &str) -> PlotSink {
         let c = color(name);
-        let (plot_sink, port) = PlotSink::make(self.ports.len(), name.into(), self.addr.clone(), c);
-        self.ports.push(port);
-        println!("{}, {}", name, port);
+        let (req_new_tx, req_new_rx) = unbounded();
+        let (new_port_tx, new_port_rx) = unbounded();
+        let plot_sink = PlotSink::make(
+            self.new_client_pulls.len(),
+            name.into(),
+            self.addr.clone(),
+            c,
+            (req_new_rx, new_port_tx)
+        );
+        self.new_client_pulls.push((new_port_rx, req_new_tx));
         plot_sink
     }
-    pub fn make_ready(self, png_path: Option<&PathBuf>) -> impl Drop {
-        let client = make_client(png_path, &self.mode);
-        println!("make ready!");
+    pub fn make_ready(mut self, png_path: Option<PathBuf>) -> impl Drop {
         let join_handle = thread::Builder::new()
             .name("plotmux-server".into())
-            .spawn(move || self.spin(client))
+            .spawn(move || {
+                match self.mode {
+                    ClientMode::Remote(_) => {
+                        loop {
+                            let mut client = make_client(&png_path, &self.mode);
+                            self.spin(&mut client);
+                        }
+                    },
+                    ClientMode::Local() => {
+                        let mut client = make_client(&png_path, &self.mode);
+                        self.spin(&mut client);
+                    }
+                }
+            })
             .expect("unable to spawn plotmux-server thread");
         defer(|| join_handle.join().unwrap())
     }
-    fn spin(self, mut client_stream: TcpStream) {
+    fn spin(&mut self, client_stream: &mut TcpStream) {
         let mut encoder = snap::raw::Encoder::new();
-        println!("spin");
-        for (i, p) in self.ports.iter().enumerate() {
-            let addr: String = format!("{}:{}", self.addr, p);
-            println!("init tcp: {}", addr);
+        for (i, (rx, tx)) in self.new_client_pulls.iter().enumerate() {
+            tx.send(()).unwrap();
+            let port = rx.recv().unwrap();
+            let addr: String = format!("{}:{}", self.addr, port);
             let buf = bincode::serialize(&(i, PlotableData::InitTcp(addr))).unwrap();
             let buf = encoder.compress_vec(&buf).unwrap();
             let len = bincode::serialize(&buf.len()).unwrap();
             client_stream.write(&len).unwrap();
             client_stream.write(&buf).unwrap();
         }
+        let len = bincode::serialize(&0_usize).unwrap();
+        client_stream.write(&len).unwrap();
     }
 }

@@ -36,7 +36,7 @@ fn main() {
         .transition_to_place("image_consumer", "out", "E");
     let png = n.png();
     let r = reactor(n, &mut plotmux);
-    let pm = plotmux.make_ready(Some(&png));
+    let pm = plotmux.make_ready(Some(png));
     r.run(&None);
     drop(pm);
 }

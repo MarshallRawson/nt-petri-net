@@ -51,15 +51,20 @@ impl TcpHandler {
             .spawn(move || {
                 let mut decoder = snap::raw::Decoder::new();
                 loop {
-                    let mut len_buf =
-                        vec![0; bincode::serialized_size::<usize>(&0_usize).unwrap() as usize];
+                    let len = bincode::serialized_size::<usize>(&0_usize).unwrap() as usize;
+                    let mut len_buf = vec![0; len];
                     if let Ok(()) = self.stream.read_exact(&mut len_buf) {
-                        let mut data_buf = vec![0; bincode::deserialize(&len_buf).unwrap()];
+                        let len = bincode::deserialize(&len_buf).unwrap();
+                        if len == 0 {
+                            return;
+                        }
+                        let mut data_buf = vec![0; len];
                         if let Err(_) = self.stream.read_exact(&mut data_buf) {
                             continue;
                         }
                         let data_buf = decoder.decompress_vec(&data_buf).unwrap();
-                        if let Err(_) = self.sender.send(bincode::deserialize(&data_buf).unwrap()) {
+                        let data: (usize, PlotableData) = bincode::deserialize(&data_buf).unwrap();
+                        if let Err(_) = self.sender.send(data) {
                             continue;
                         }
                         ctx.request_repaint();
