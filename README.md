@@ -2,7 +2,7 @@
 
 A graph based concurrent middle ware written in Rust.
 
-This repository aims to implement colored non-deterministically transitioning Petri nets specified in [Petri Nets for Concurrent Programming](https://arxiv.org/abs/2208.02900) by Michael Rawson and Marshall Rawson.
+This repository aims to implement colored non-deterministically transitioning Petri nets specified in [Petri Nets for Concurrent Programming](https://arxiv.org/abs/2208.02900) by Marshall Rawson and Michael Rawson.
 
 ## Theory
 
