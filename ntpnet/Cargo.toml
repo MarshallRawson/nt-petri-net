@@ -14,12 +14,16 @@ itertools = "0.10.3"
 tempfile = "3.3.0"
 bimap = "0.6.2"
 defer = "0.1.0"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
 procinfo = "0.4.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+memory-stats = "1.2.0"
 
 [dev-dependencies]
 utilities = { path = "utilities" }
 
-rscam = "0.5.5"
 image = "0.24.2"
 fft2d = "0.1.0"
 rustfft = "6.1.0"
@@ -29,3 +33,6 @@ libpulse-sys = "1.19.3"
 libpulse-binding = "2.26.0"
 
 byteorder = "1.4.3"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rscam = "0.5.5"

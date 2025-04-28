@@ -1,4 +1,3 @@
-#![feature(trait_upcasting)]
 #![allow(incomplete_features)]
 
 extern crate ntpnet_macro;
